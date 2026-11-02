@@ -54,6 +54,14 @@ export const Header: React.FC = () => {
                 Написать
               </Link>
             )}
+            {isAuthenticated && (
+              <Link
+                to="/profile"
+                className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container"
+              >
+                Профиль
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -119,13 +127,19 @@ export const Header: React.FC = () => {
                 )}
               </div>
 
-              {/* User display */}
-              <div className="hidden sm:flex items-center gap-2 pl-1 text-sm font-medium text-on-surface">
-                <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs text-secondary font-semibold">
-                  {user.username.charAt(0).toUpperCase()}
+              {/* User profile link */}
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-container transition-colors text-sm font-medium text-on-surface group"
+                title="Перейти в личный кабинет"
+              >
+                <div className="w-7 h-7 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-xs text-secondary font-semibold overflow-hidden shrink-0">
+                  <UserIcon className="w-3.5 h-3.5 text-secondary group-hover:text-primary transition-colors" />
+                </div>
+                <span className="hidden sm:inline max-w-[120px] truncate group-hover:text-primary transition-colors">
+                  {user.username}
                 </span>
-                <span className="max-w-[120px] truncate">{user.username}</span>
-              </div>
+              </Link>
 
               {/* Logout button */}
               <Button
