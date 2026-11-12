@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArticleResponse } from '@/core/api/types';
 import { calculateReadingTime } from '@/core/utils/readingTime';
+import { profileStorage } from '@/core/profile/profileStorage';
 import { Badge } from '@/components/ui/Badge';
-import { Clock, User as UserIcon, ArrowUpRight } from 'lucide-react';
+import { Clock, User as UserIcon, ArrowUpRight, Bookmark, Heart } from 'lucide-react';
 
 export interface ArticleCardProps {
   article: ArticleResponse;
@@ -13,6 +14,31 @@ export interface ArticleCardProps {
 
 export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   const readingStats = calculateReadingTime(article.content);
+  const [bookmarked, setBookmarked] = useState(() => profileStorage.isBookmarked(article.id));
+  const [liked, setLiked] = useState(() => profileStorage.isLiked(article.id));
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setBookmarked(profileStorage.isBookmarked(article.id));
+      setLiked(profileStorage.isLiked(article.id));
+    };
+    window.addEventListener('editorial_profile_updated', handleUpdate);
+    return () => window.removeEventListener('editorial_profile_updated', handleUpdate);
+  }, [article.id]);
+
+  const handleToggleBookmark = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextState = profileStorage.toggleBookmark(article.id);
+    setBookmarked(nextState);
+  };
+
+  const handleToggleLike = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextState = profileStorage.toggleLike(article.id);
+    setLiked(nextState);
+  };
 
   // Generate a clean text excerpt from markdown content
   const excerpt = article.content
@@ -43,9 +69,23 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
             </span>
           </div>
 
-          <Badge variant="outline" className="font-mono text-[10px]">
-            #{article.id}
-          </Badge>
+          <div className="flex items-center gap-1 z-10">
+            <button
+              type="button"
+              onClick={handleToggleBookmark}
+              className={`p-1.5 rounded-lg transition-colors ${
+                bookmarked
+                  ? 'text-primary bg-surface-container'
+                  : 'text-secondary/70 hover:text-on-surface hover:bg-surface-container/60'
+              }`}
+              title={bookmarked ? 'Удалить из закладок' : 'Сохранить в закладки'}
+            >
+              <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
+            </button>
+            <Badge variant="outline" className="font-mono text-[10px]">
+              #{article.id}
+            </Badge>
+          </div>
         </div>
 
         {/* Title */}
@@ -62,10 +102,26 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
         </p>
       </div>
 
-      {/* Footer / Read link */}
-      <div className="flex items-center justify-between pt-4 border-t border-outline-variant/60 text-xs font-semibold text-primary">
-        <span>Читать полностью</span>
-        <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      {/* Footer / Read link + Quick Like */}
+      <div className="flex items-center justify-between pt-4 border-t border-outline-variant/60 text-xs font-semibold text-primary z-10">
+        <Link to={`/article/${article.id}`} className="flex items-center gap-1 hover:underline">
+          <span>Читать полностью</span>
+          <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </Link>
+
+        <button
+          type="button"
+          onClick={handleToggleLike}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
+            liked
+              ? 'text-error bg-error/10 font-bold'
+              : 'text-secondary hover:text-error hover:bg-surface-container'
+          }`}
+          title={liked ? 'Убрать отметку нравится' : 'Нравится'}
+        >
+          <Heart className={`w-3.5 h-3.5 ${liked ? 'fill-current' : ''}`} />
+          <span className="text-[11px]">{liked ? 'Понравилось' : 'Лайк'}</span>
+        </button>
       </div>
     </article>
   );

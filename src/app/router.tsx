@@ -4,6 +4,7 @@ import { CatalogPage } from '@/pages/catalog/CatalogPage';
 import { ReaderPage } from '@/pages/reader/ReaderPage';
 import { ArticleEditorPage } from '@/pages/editor/ArticleEditorPage';
 import { AuthPage } from '@/pages/auth/AuthPage';
+import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { NotFoundPage } from '@/pages/not-found/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -26,6 +27,10 @@ export const router = createBrowserRouter([
       {
         path: 'editor/:id',
         element: <ArticleEditorPage />,
+      },
+      {
+        path: 'profile',
+        element: <ProfilePage />,
       },
       {
         path: '*',
