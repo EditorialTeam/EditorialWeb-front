@@ -18,7 +18,10 @@ import {
   RefreshCw,
   Share2,
   Check,
+  Bookmark,
+  Heart,
 } from 'lucide-react';
+import { profileStorage } from '@/core/profile/profileStorage';
 
 export const ReaderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +31,10 @@ export const ReaderPage: React.FC = () => {
   const [article, setArticle] = useState<ArticleResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Bookmark & Like state
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   // Reader tools
   const [fontSizeOffset, setFontSizeOffset] = useState<number>(0); // -2 to +4 px
@@ -52,6 +59,8 @@ export const ReaderPage: React.FC = () => {
       try {
         const data = await articlesApi.getById(articleId);
         setArticle(data);
+        setIsBookmarked(profileStorage.isBookmarked(articleId));
+        setIsLiked(profileStorage.isLiked(articleId));
       } catch (err: any) {
         console.error('Failed to load article:', err);
         setError(err.message || 'Статья не найдена');
@@ -61,7 +70,28 @@ export const ReaderPage: React.FC = () => {
     };
 
     loadArticle();
+
+    const handleProfileSync = () => {
+      if (!isNaN(articleId)) {
+        setIsBookmarked(profileStorage.isBookmarked(articleId));
+        setIsLiked(profileStorage.isLiked(articleId));
+      }
+    };
+    window.addEventListener('editorial_profile_updated', handleProfileSync);
+    return () => window.removeEventListener('editorial_profile_updated', handleProfileSync);
   }, [articleId]);
+
+  const handleToggleBookmark = () => {
+    if (!article) return;
+    const next = profileStorage.toggleBookmark(article.id);
+    setIsBookmarked(next);
+  };
+
+  const handleToggleLike = () => {
+    if (!article) return;
+    const next = profileStorage.toggleLike(article.id);
+    setIsLiked(next);
+  };
 
   const handleDelete = async () => {
     if (!article) return;
@@ -139,6 +169,30 @@ export const ReaderPage: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
+          {/* Bookmark Button */}
+          <Button
+            variant={isBookmarked ? 'primary' : 'outline'}
+            size="sm"
+            onClick={handleToggleBookmark}
+            className="text-xs gap-1.5"
+            title={isBookmarked ? 'Удалить из закладок' : 'Сохранить в закладки'}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+            <span className="hidden sm:inline">{isBookmarked ? 'В закладках' : 'В закладки'}</span>
+          </Button>
+
+          {/* Like Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleLike}
+            className={`text-xs gap-1.5 ${isLiked ? 'text-error border-error/50 bg-error/5' : ''}`}
+            title={isLiked ? 'Убрать отметку «Нравится»' : 'Поставить отметку «Нравится»'}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-error' : ''}`} />
+            <span className="hidden sm:inline">{isLiked ? 'Нравится' : 'Лайк'}</span>
+          </Button>
+
           {/* Font Resizer */}
           <div className="hidden sm:flex items-center gap-1 bg-surface border border-outline-variant rounded-xl p-1 text-xs text-secondary">
             <button

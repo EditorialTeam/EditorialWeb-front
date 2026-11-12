@@ -57,9 +57,8 @@ export const Header: React.FC = () => {
             {isAuthenticated && (
               <Link
                 to="/profile"
-                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5 text-on-surface font-semibold"
+                className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container"
               >
-                <UserIcon className="w-4 h-4" />
                 Профиль
               </Link>
             )}
@@ -128,18 +127,17 @@ export const Header: React.FC = () => {
                 )}
               </div>
 
-              {/* User display - clickable profile link */}
+              {/* User profile link */}
               <Link
                 to="/profile"
-                className="flex items-center gap-2 px-2.5 py-1 rounded-xl hover:bg-surface-container text-sm font-medium text-on-surface transition-all border border-transparent hover:border-outline-variant group"
-                title="Перейти в личный кабинет и профиль"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-container transition-colors text-sm font-medium text-on-surface group"
+                title="Перейти в личный кабинет"
               >
-                <span className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold transition-transform group-hover:scale-105">
-                  {user.username.charAt(0).toUpperCase()}
-                </span>
-                <span className="max-w-[120px] truncate font-semibold">{user.username}</span>
-                <span className="text-[11px] text-secondary bg-surface-container px-1.5 py-0.5 rounded border border-outline-variant/60">
-                  Профиль
+                <div className="w-7 h-7 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-xs text-secondary font-semibold overflow-hidden shrink-0">
+                  <UserIcon className="w-3.5 h-3.5 text-secondary group-hover:text-primary transition-colors" />
+                </div>
+                <span className="hidden sm:inline max-w-[120px] truncate group-hover:text-primary transition-colors">
+                  {user.username}
                 </span>
               </Link>
 
