@@ -13,6 +13,8 @@ export interface ArticleCardProps {
 
 export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   const readingStats = calculateReadingTime(article.content);
+  const authorId = article.authorAccountId || article.authorId || 1;
+  const authorName = article.authorDisplayName || `Автор #${authorId}`;
 
   // Generate a clean text excerpt from markdown content
   const excerpt = article.content
@@ -32,10 +34,14 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
         {/* Meta row */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 text-xs text-on-surface-variant/80">
-            <span className="flex items-center gap-1 font-medium">
+            <Link
+              to={`/user/${authorId}`}
+              className="relative z-10 flex items-center gap-1 font-medium hover:text-primary hover:underline transition-colors"
+              title="Перейти на страницу автора"
+            >
               <UserIcon className="w-3.5 h-3.5 text-secondary" />
-              Автор #{article.authorAccountId}
-            </span>
+              <span>{authorName}</span>
+            </Link>
             <span>•</span>
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-secondary" />

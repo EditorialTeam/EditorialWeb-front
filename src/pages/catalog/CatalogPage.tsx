@@ -147,11 +147,15 @@ export const CatalogPage: React.FC = () => {
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             >
               <option value="all">Все авторы</option>
-              {authorOptions.map((id) => (
-                <option key={id} value={String(id)}>
-                  Автор #{id}
-                </option>
-              ))}
+              {authorOptions.map((id) => {
+                const authorArticle = articles.find((a) => a.authorAccountId === id);
+                const name = authorArticle?.authorDisplayName || `Автор #${id}`;
+                return (
+                  <option key={id} value={String(id)}>
+                    {name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

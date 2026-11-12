@@ -149,6 +149,16 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
   if (endpoint === '/api/articles' && method === 'GET') {
     return (await mockApi.getArticles()) as unknown as T;
   }
+  if (endpoint === '/api/users/me' && method === 'GET') {
+    return (await mockApi.getMe(userId)) as unknown as T;
+  }
+  if (endpoint === '/api/users/me' && method === 'PATCH') {
+    return (await mockApi.updateMe(userId, body)) as unknown as T;
+  }
+  if (endpoint.startsWith('/api/users/') && method === 'GET') {
+    const id = parseInt(endpoint.replace('/api/users/', ''), 10);
+    return (await mockApi.getUserProfile(id)) as unknown as T;
+  }
   if (endpoint.startsWith('/api/articles/') && method === 'GET') {
     const id = parseInt(endpoint.replace('/api/articles/', ''), 10);
     return (await mockApi.getArticleById(id)) as unknown as T;

@@ -213,12 +213,18 @@ export const ReaderPage: React.FC = () => {
 
           {/* Byline strip */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-secondary pt-2">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary">
-                A
+            <Link
+              to={`/user/${article.authorAccountId || article.authorId || 1}`}
+              className="flex items-center gap-2 hover:text-primary group transition-colors"
+              title="Перейти на страницу автора"
+            >
+              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary group-hover:scale-105 transition-transform">
+                {(article.authorDisplayName || 'A').charAt(0).toUpperCase()}
               </span>
-              <span className="font-medium text-on-surface">Автор #{article.authorAccountId}</span>
-            </div>
+              <span className="font-medium text-on-surface group-hover:underline">
+                {article.authorDisplayName || `Автор #${article.authorAccountId}`}
+              </span>
+            </Link>
             <span>•</span>
             <div className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />

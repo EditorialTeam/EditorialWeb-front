@@ -38,20 +38,29 @@ export const Header: React.FC = () => {
             <span className="font-extrabold tracking-tight">Editorial</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-secondary">
+          <nav className="hidden md:flex items-center gap-2 text-sm font-medium text-secondary">
             <Link
               to="/"
-              className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container"
+              className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container"
             >
               Каталог
             </Link>
             {canWrite && (
               <Link
                 to="/editor"
-                className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
               >
                 <PenSquare className="w-4 h-4" />
                 Написать
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                to="/profile"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5 text-on-surface font-semibold"
+              >
+                <UserIcon className="w-4 h-4" />
+                Профиль
               </Link>
             )}
           </nav>
@@ -119,13 +128,20 @@ export const Header: React.FC = () => {
                 )}
               </div>
 
-              {/* User display */}
-              <div className="hidden sm:flex items-center gap-2 pl-1 text-sm font-medium text-on-surface">
-                <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs text-secondary font-semibold">
+              {/* User display - clickable profile link */}
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 px-2.5 py-1 rounded-xl hover:bg-surface-container text-sm font-medium text-on-surface transition-all border border-transparent hover:border-outline-variant group"
+                title="Перейти в личный кабинет и профиль"
+              >
+                <span className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold transition-transform group-hover:scale-105">
                   {user.username.charAt(0).toUpperCase()}
                 </span>
-                <span className="max-w-[120px] truncate">{user.username}</span>
-              </div>
+                <span className="max-w-[120px] truncate font-semibold">{user.username}</span>
+                <span className="text-[11px] text-secondary bg-surface-container px-1.5 py-0.5 rounded border border-outline-variant/60">
+                  Профиль
+                </span>
+              </Link>
 
               {/* Logout button */}
               <Button

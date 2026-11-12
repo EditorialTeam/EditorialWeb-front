@@ -1,5 +1,7 @@
 export type AccountRole = 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
 
+export type ArticleStatus = 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
+
 export interface RegisterAccountRequest {
   username: string;
   email: string;
@@ -39,9 +41,17 @@ export interface LogoutRequest {
 
 export interface ArticleResponse {
   id: number;
+  articleId?: number; // Backend GetArticlesResponse uses articleId
   title: string;
   content: string;
   authorAccountId: number;
+  authorId?: number; // Backend GetArticlesResponse uses authorId
+  authorDisplayName?: string | null;
+  status?: ArticleStatus;
+  createdAt?: string;
+  publishedAt?: string | null;
+  updatedAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface CreateArticleRequest {
@@ -70,4 +80,22 @@ export interface AuthUser {
   username: string;
   email: string;
   role: AccountRole;
+}
+
+export interface UserProfile {
+  accountId: number;
+  username: string;
+  displayName: string | null;
+  createdAt: string;
+  profileDescription: string | null;
+}
+
+export interface PatchProfileRequest {
+  displayName?: string | null;
+  profileDescription?: string | null;
+}
+
+export interface PatchProfileResponse {
+  displayName: string | null;
+  profileDescription: string | null;
 }
