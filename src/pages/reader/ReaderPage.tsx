@@ -7,7 +7,6 @@ import { ArticleResponse } from '@/core/api/types';
 import { useAuth } from '@/core/auth/AuthContext';
 import { calculateReadingTime } from '@/core/utils/readingTime';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   ArrowLeft,
@@ -48,7 +47,7 @@ export const ReaderPage: React.FC = () => {
 
   useEffect(() => {
     if (isNaN(articleId)) {
-      setError('Некорректный ID статьи');
+      setError('Статья не найдена');
       setIsLoading(false);
       return;
     }
@@ -255,12 +254,6 @@ export const ReaderPage: React.FC = () => {
       <article className="max-w-[720px] mx-auto pb-24">
         {/* Publication Meta Header */}
         <div className="pb-8 border-b border-outline-variant space-y-4">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="font-mono text-xs">
-              Публикация #{article.id}
-            </Badge>
-          </div>
-
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-on-surface tracking-tight leading-[1.2]">
             {article.title}
           </h1>
@@ -276,7 +269,7 @@ export const ReaderPage: React.FC = () => {
                 {(article.authorDisplayName || 'A').charAt(0).toUpperCase()}
               </span>
               <span className="font-medium text-on-surface group-hover:underline">
-                {article.authorDisplayName || `Автор #${article.authorAccountId}`}
+                {article.authorDisplayName || 'Автор'}
               </span>
             </Link>
             <span>•</span>

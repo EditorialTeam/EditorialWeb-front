@@ -192,10 +192,33 @@ export const profileStorage = {
     }
   },
 
+  getAuthorById(authorId: number): TrackedAuthor | undefined {
+    return this.getTrackedAuthors().find((a) => a.id === authorId);
+  },
+
+  isFollowingAuthor(authorId: number): boolean {
+    const author = this.getAuthorById(authorId);
+    return Boolean(author?.isFollowed);
+  },
+
   toggleFollowAuthor(authorId: number): boolean {
     const authors = this.getTrackedAuthors();
-    const target = authors.find((a) => a.id === authorId);
-    if (!target) return false;
+    let target = authors.find((a) => a.id === authorId);
+    if (!target) {
+      // Add author if not yet in tracked list
+      target = {
+        id: authorId,
+        name: 'Автор',
+        specialty: 'Публикации в Editorial',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        isFollowed: true,
+      };
+      authors.push(target);
+      localStorage.setItem(TRACKED_AUTHORS_KEY, JSON.stringify(authors));
+      notifyProfileChange();
+      return true;
+    }
     target.isFollowed = !target.isFollowed;
     localStorage.setItem(TRACKED_AUTHORS_KEY, JSON.stringify(authors));
     notifyProfileChange();

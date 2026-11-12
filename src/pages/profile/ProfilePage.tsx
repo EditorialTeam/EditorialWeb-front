@@ -414,7 +414,7 @@ export const ProfilePage: React.FC = () => {
                           <div className="flex items-center justify-between pt-2">
                             <div className="flex items-center gap-2 text-xs text-secondary">
                               <span className="font-semibold text-on-surface">
-                                Автор #{art.authorAccountId}
+                                {art.authorDisplayName || 'Автор'}
                               </span>
                               <span>•</span>
                               <span>{stats.text}</span>
@@ -473,7 +473,7 @@ export const ProfilePage: React.FC = () => {
                       <h3 className="text-base font-bold text-on-surface hover:text-primary truncate">
                         <Link to={`/article/${art.id}`}>{art.title}</Link>
                       </h3>
-                      <div className="text-xs text-secondary">Автор #{art.authorAccountId}</div>
+                      <div className="text-xs text-secondary">{art.authorDisplayName || 'Автор'}</div>
                     </div>
                     <button
                       type="button"
@@ -495,27 +495,40 @@ export const ProfilePage: React.FC = () => {
               {authors.map((author) => (
                 <div
                   key={author.id}
-                  className="bg-surface rounded-xl p-4 sm:p-5 border border-outline-variant flex items-center justify-between gap-4"
+                  className="bg-surface rounded-xl p-4 sm:p-5 border border-outline-variant flex items-center justify-between gap-4 hover:border-outline transition-colors"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <Link
+                    to={`/user/${author.id}`}
+                    className="flex items-center gap-3.5 min-w-0 group hover:opacity-90 transition-opacity"
+                    title={`Перейти на страницу автора ${author.name}`}
+                  >
                     <img
                       src={author.avatarUrl}
                       alt={author.name}
-                      className="w-11 h-11 rounded-full object-cover bg-surface-container shrink-0"
+                      className="w-11 h-11 rounded-full object-cover bg-surface-container shrink-0 group-hover:ring-2 group-hover:ring-primary transition-all"
                     />
                     <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-on-surface truncate">{author.name}</h4>
+                      <h4 className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">
+                        {author.name}
+                      </h4>
                       <p className="text-xs text-secondary truncate">{author.specialty}</p>
                     </div>
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link to={`/user/${author.id}`}>
+                      <Button variant="outline" size="sm" className="text-xs hidden sm:inline-flex">
+                        Статьи
+                      </Button>
+                    </Link>
+                    <Button
+                      variant={author.isFollowed ? 'secondary' : 'primary'}
+                      size="sm"
+                      onClick={() => handleToggleFollow(author.id)}
+                      className="text-xs"
+                    >
+                      {author.isFollowed ? 'Вы подписаны' : 'Подписаться'}
+                    </Button>
                   </div>
-                  <Button
-                    variant={author.isFollowed ? 'secondary' : 'primary'}
-                    size="sm"
-                    onClick={() => handleToggleFollow(author.id)}
-                    className="text-xs shrink-0"
-                  >
-                    {author.isFollowed ? 'Вы подписаны' : 'Подписаться'}
-                  </Button>
                 </div>
               ))}
             </div>
@@ -547,7 +560,7 @@ export const ProfilePage: React.FC = () => {
                       <h3 className="text-base font-bold text-on-surface hover:text-primary truncate">
                         <Link to={`/article/${art.id}`}>{art.title}</Link>
                       </h3>
-                      <div className="text-xs text-secondary">Публикация #{art.id}</div>
+                      <div className="text-xs text-secondary font-medium text-emerald-700">Опубликовано</div>
                     </div>
                     <Link to={`/editor/${art.id}`}>
                       <Button variant="outline" size="sm" className="text-xs shrink-0 gap-1.5">
@@ -590,19 +603,23 @@ export const ProfilePage: React.FC = () => {
             <div className="space-y-3.5">
               {authors.slice(0, 3).map((author) => (
                 <div key={author.id} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <Link
+                    to={`/user/${author.id}`}
+                    className="flex items-center gap-2.5 min-w-0 hover:opacity-85 transition-opacity group"
+                    title={`Страница автора ${author.name}`}
+                  >
                     <img
                       src={author.avatarUrl}
                       alt={author.name}
-                      className="w-9 h-9 rounded-full object-cover bg-surface-container shrink-0"
+                      className="w-9 h-9 rounded-full object-cover bg-surface-container shrink-0 group-hover:ring-2 group-hover:ring-primary transition-all"
                     />
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-on-surface truncate">
+                      <div className="text-xs font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
                         {author.name}
                       </div>
                       <div className="text-[11px] text-secondary truncate">{author.specialty}</div>
                     </div>
-                  </div>
+                  </Link>
                   <button
                     type="button"
                     onClick={() => handleToggleFollow(author.id)}

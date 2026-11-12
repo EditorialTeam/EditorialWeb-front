@@ -5,6 +5,7 @@ import { ReaderPage } from '@/pages/reader/ReaderPage';
 import { ArticleEditorPage } from '@/pages/editor/ArticleEditorPage';
 import { AuthPage } from '@/pages/auth/AuthPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
+import { UserProfilePage } from '@/pages/profile/UserProfilePage';
 import { NotFoundPage } from '@/pages/not-found/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -31,6 +32,14 @@ export const router = createBrowserRouter([
       {
         path: 'profile',
         element: <ProfilePage />,
+      },
+      {
+        path: 'user/:id',
+        element: <UserProfilePage />,
+      },
+      {
+        path: 'author/:id',
+        element: <UserProfilePage />,
       },
       {
         path: '*',

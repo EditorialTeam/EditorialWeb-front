@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { articlesApi } from '@/core/api/articlesApi';
 import { ArticleResponse } from '@/core/api/types';
+import { profileStorage } from '@/core/profile/profileStorage';
 import { useAuth } from '@/core/auth/AuthContext';
 import { ArticleCard } from './ArticleCard';
 import { Button } from '@/components/ui/Button';
@@ -68,13 +69,18 @@ export const CatalogPage: React.FC = () => {
   const authorSelectOptions: SelectOption[] = useMemo(() => {
     return [
       { value: 'all', label: 'Все авторы', icon: <Users className="w-3.5 h-3.5" /> },
-      ...authorOptions.map((id) => ({
-        value: String(id),
-        label: `Автор #${id}`,
-        icon: <UserIcon className="w-3.5 h-3.5" />,
-      })),
+      ...authorOptions.map((id, index) => {
+        const tracked = profileStorage.getAuthorById(id);
+        const articleWithAuthor = articles.find((a) => a.authorAccountId === id);
+        const name = tracked?.name || articleWithAuthor?.authorDisplayName || `Автор ${index + 1}`;
+        return {
+          value: String(id),
+          label: name,
+          icon: <UserIcon className="w-3.5 h-3.5" />,
+        };
+      }),
     ];
-  }, [authorOptions]);
+  }, [authorOptions, articles]);
 
   const sortSelectOptions: SelectOption[] = [
     { value: 'newest', label: 'Сначала новые', icon: <ArrowDownWideNarrow className="w-3.5 h-3.5" /> },
@@ -180,7 +186,7 @@ export const CatalogPage: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по названию, тексту или ID..."
+              placeholder="Поиск по названию или тексту статьи..."
               className="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             />
             {searchQuery && (
@@ -213,6 +219,35 @@ export const CatalogPage: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Selected Author Quick View Bar */}
+        {selectedAuthor !== 'all' && (
+          <div className="mt-3.5 flex items-center justify-between p-3 bg-surface-container-low border border-outline-variant rounded-xl text-xs">
+            <div className="flex items-center gap-2">
+              <UserIcon className="w-4 h-4 text-primary" />
+              <span className="text-secondary">Публикации автора:</span>
+              <span className="font-bold text-on-surface">
+                {authorSelectOptions.find((o) => o.value === selectedAuthor)?.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                to={`/user/${selectedAuthor}`}
+                className="font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
+              >
+                <span>Смотреть страницу автора</span>
+                <span>→</span>
+              </Link>
+              <button
+                onClick={() => setSelectedAuthor('all')}
+                className="text-secondary hover:text-error transition-colors p-0.5 rounded"
+                title="Сбросить фильтр"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}

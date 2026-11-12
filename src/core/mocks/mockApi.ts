@@ -249,7 +249,7 @@ export const mockApi = {
       return {
         accountId,
         username: `user_${accountId}`,
-        displayName: `Автор #${accountId}`,
+        displayName: 'Автор',
         createdAt: new Date().toISOString(),
         profileDescription: 'Автор публикаций в EditorialWeb.',
       };
@@ -273,7 +273,7 @@ export const mockApi = {
       const author = users.find((u) => u.id === a.authorAccountId);
       return {
         ...a,
-        authorDisplayName: author ? author.displayName || author.username : `Автор #${a.authorAccountId}`,
+        authorDisplayName: author ? author.displayName || author.username : 'Автор',
       };
     });
   },
@@ -294,7 +294,7 @@ export const mockApi = {
 
     return {
       ...article,
-      authorDisplayName: author ? author.displayName || author.username : `Автор #${article.authorAccountId}`,
+      authorDisplayName: author ? author.displayName || author.username : 'Автор',
     };
   },
 
@@ -309,7 +309,7 @@ export const mockApi = {
       title: req.title,
       content: req.content,
       authorAccountId: authorId,
-      authorDisplayName: author ? author.displayName || author.username : `Автор #${authorId}`,
+      authorDisplayName: author ? author.displayName || author.username : 'Автор',
       status: 'PUBLISHED',
       createdAt: new Date().toISOString(),
     };

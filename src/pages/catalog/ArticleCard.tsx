@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArticleResponse } from '@/core/api/types';
 import { calculateReadingTime } from '@/core/utils/readingTime';
 import { profileStorage } from '@/core/profile/profileStorage';
-import { Badge } from '@/components/ui/Badge';
 import { Clock, User as UserIcon, ArrowUpRight, Bookmark, Heart } from 'lucide-react';
 
 export interface ArticleCardProps {
@@ -15,7 +14,7 @@ export interface ArticleCardProps {
 export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   const readingStats = calculateReadingTime(article.content);
   const authorId = article.authorAccountId || article.authorId || 1;
-  const authorName = article.authorDisplayName || `Автор #${authorId}`;
+  const authorName = article.authorDisplayName || 'Автор';
   const [bookmarked, setBookmarked] = useState(() => profileStorage.isBookmarked(article.id));
   const [liked, setLiked] = useState(() => profileStorage.isLiked(article.id));
 
@@ -88,9 +87,6 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
             >
               <Bookmark className={`w-4 h-4 ${bookmarked ? 'fill-current' : ''}`} />
             </button>
-            <Badge variant="outline" className="font-mono text-[10px]">
-              #{article.id}
-            </Badge>
           </div>
         </div>
 

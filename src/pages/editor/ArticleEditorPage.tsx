@@ -39,7 +39,7 @@ export const ArticleEditorPage: React.FC = () => {
     if (!isEditMode) return;
 
     if (isNaN(articleId)) {
-      setError('Некорректный ID статьи');
+      setError('Статья не найдена');
       setIsLoading(false);
       return;
     }
