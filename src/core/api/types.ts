@@ -42,7 +42,14 @@ export interface ArticleResponse {
   title: string;
   content: string;
   authorAccountId: number;
+  authorDisplayName?: string | null;
+  status?: ArticleStatus;
+  createdAt?: string;
+  publishedAt?: string | null;
 }
+
+export type ArticleStatus = 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
+export type ArticleScope = 'published' | 'my' | 'review';
 
 export interface CreateArticleRequest {
   title: string;

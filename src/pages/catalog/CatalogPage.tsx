@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { articlesApi } from '@/core/api/articlesApi';
-import { ArticleResponse } from '@/core/api/types';
+import { ArticleResponse, ArticleScope } from '@/core/api/types';
 import { useAuth } from '@/core/auth/AuthContext';
 import { ArticleCard } from './ArticleCard';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +17,12 @@ import {
 } from 'lucide-react';
 
 export const CatalogPage: React.FC = () => {
-  const { canWrite, isMockMode } = useAuth();
+  const { canWrite, canModerate, isMockMode, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedView = searchParams.get('view');
+  const scope: ArticleScope = requestedView === 'my' && isAuthenticated ? 'my'
+    : requestedView === 'review' && canModerate ? 'review' : 'published';
+  const requestId = useRef(0);
 
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,23 +37,32 @@ export const CatalogPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
-  const loadArticles = async () => {
+  const loadArticles = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    if (authLoading) return;
+    if (!isAuthenticated && !isMockMode) {
+      setArticles([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const data = await articlesApi.getAll();
-      setArticles(data || []);
+      const data = await articlesApi.getAll(scope);
+      if (currentRequest !== requestId.current) return;
+      setArticles(data);
     } catch (err: any) {
-      console.error('Failed to load articles:', err);
+      if (currentRequest !== requestId.current) return;
       setError(err.message || 'Не удалось загрузить список статей');
     } finally {
-      setIsLoading(false);
+      if (currentRequest === requestId.current) setIsLoading(false);
     }
-  };
+  }, [scope, isAuthenticated, isMockMode, authLoading]);
 
   useEffect(() => {
     loadArticles();
-  }, [isMockMode]);
+    return () => { requestId.current += 1; };
+  }, [loadArticles]);
 
   // Unique authors for filter dropdown
   const authorOptions = useMemo(() => {
@@ -91,7 +105,11 @@ export const CatalogPage: React.FC = () => {
   // Reset to first page when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedAuthor, sortBy]);
+  }, [searchQuery, selectedAuthor, sortBy, scope]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -115,6 +133,19 @@ export const CatalogPage: React.FC = () => {
               </Button>
             </Link>
           )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          {([
+            ['published', 'Публикации', true],
+            ['my', 'Мои статьи', isAuthenticated],
+            ['review', 'На проверке', canModerate],
+          ] as const).filter(([, , visible]) => visible).map(([view, label]) => (
+            <Button key={view} size="sm" variant={scope === view ? 'primary' : 'outline'}
+              onClick={() => { setSearchParams(view === 'published' ? {} : { view }); setSelectedAuthor('all'); }}>
+              {label}
+            </Button>
+          ))}
         </div>
 
         {/* Search & Filter Toolbar */}
@@ -149,7 +180,7 @@ export const CatalogPage: React.FC = () => {
               <option value="all">Все авторы</option>
               {authorOptions.map((id) => (
                 <option key={id} value={String(id)}>
-                  Автор #{id}
+                  {articles.find((article) => article.authorAccountId === id)?.authorDisplayName || `Автор #${id}`}
                 </option>
               ))}
             </select>
@@ -171,7 +202,13 @@ export const CatalogPage: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      {isLoading ? (
+      {!authLoading && !isAuthenticated && !isMockMode ? (
+        <div className="bg-surface border border-outline-variant rounded-2xl p-8 text-center max-w-md mx-auto my-12 space-y-4">
+          <h2 className="text-xl font-bold text-on-surface">Войдите, чтобы читать статьи</h2>
+          <p className="text-sm text-secondary">Публикации Editorial доступны пользователям с аккаунтом.</p>
+          <Link to="/auth" className="inline-block"><Button size="sm">Войти в аккаунт</Button></Link>
+        </div>
+      ) : isLoading || authLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
