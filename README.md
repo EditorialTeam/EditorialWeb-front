@@ -33,7 +33,7 @@ npm run build
 В шапке приложения предусмотрен удобный переключатель между двумя режимами:
 
 1. **Gateway :8080 (по умолчанию при наличии бэкенда):**
-   Запросы проксируются на Spring Cloud Gateway (`http://localhost:8080`), развёрнутый через Docker Compose из `C:\EditorialWeb`:
+   Запросы проксируются на Spring Cloud Gateway (`http://localhost:8080`), развёрнутый через Docker Compose
    - `/api/auth/**` → `auth-service`
    - `/api/articles/**` → `article-service`
 
@@ -42,8 +42,6 @@ npm run build
 
 ## Контракт API
 
-Источники: `C:\EditorialWeb\editorial-docs\article-service\README.md` и
-`C:\EditorialWeb\editorial-docs\auth-service\README.md`, сверенные с контроллерами и сервисами проекта.
 
 - Чтение статей требует входа. Основной каталог запрашивает только `status=PUBLISHED`.
 - Разделы «Мои статьи» и «На проверке» используют `/api/articles/my` и `/api/editor/articles`.
