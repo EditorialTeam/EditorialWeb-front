@@ -1,5 +1,7 @@
 import {
   AccountRegisterResponse,
+  AuthUser,
+  ArticleStatus,
   ArticleResponse,
   CreateArticleRequest,
   LoginRequest,
@@ -11,6 +13,8 @@ import {
   UpdateArticleRequest,
 } from '../api/types';
 import { INITIAL_MOCK_ARTICLES } from './mockData';
+import { parseArticleList } from '../api/articleList';
+import { articlePermissions } from '../api/articlePermissions';
 
 const MOCK_ARTICLES_STORAGE_KEY = 'editorial_mock_articles_db';
 const MOCK_USERS_STORAGE_KEY = 'editorial_mock_users_db';
@@ -55,12 +59,12 @@ function getStoredArticles(): ArticleResponse[] {
   const raw = localStorage.getItem(MOCK_ARTICLES_STORAGE_KEY);
   if (!raw) {
     localStorage.setItem(MOCK_ARTICLES_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_ARTICLES));
-    return [...INITIAL_MOCK_ARTICLES];
+    return INITIAL_MOCK_ARTICLES.map((article) => ({ ...article, status: 'PUBLISHED' }));
   }
   try {
-    return JSON.parse(raw) as ArticleResponse[];
+    return parseArticleList(JSON.parse(raw)).map((article) => ({ ...article, status: article.status || 'PUBLISHED' }));
   } catch {
-    return [...INITIAL_MOCK_ARTICLES];
+    throw new Error('Не удалось прочитать демо-статьи из хранилища браузера.');
   }
 }
 
@@ -196,6 +200,8 @@ export const mockApi = {
       title: req.title,
       content: req.content,
       authorAccountId: currentUserId,
+      status: 'DRAFT',
+      createdAt: new Date().toISOString(),
     };
     articles.unshift(newArticle);
     saveStoredArticles(articles);
@@ -238,6 +244,24 @@ export const mockApi = {
     };
     saveStoredArticles(articles);
     return articles[idx];
+  },
+
+  async changeStatus(id: number, action: string, user: AuthUser | null, decision: string | null): Promise<void> {
+    const articles = getStoredArticles();
+    const article = articles.find((item) => item.id === id);
+    if (!article) throw new Error('Статья не найдена');
+    const permissions = articlePermissions(article, user);
+    const allowed = action === 'moderate' ? permissions.moderate
+      : action === 'withdraw-from-review' ? permissions.withdraw
+      : action === 'submit' ? permissions.submit : permissions.archive;
+    if (!allowed) throw new Error('Действие недоступно для текущей роли или статуса статьи');
+    const statuses: Record<string, ArticleStatus> = {
+      submit: 'PENDING_REVIEW', archive: 'ARCHIVED', 'withdraw-from-review': 'DRAFT',
+      moderate: decision === 'APPROVED' ? 'PUBLISHED' : 'REJECTED',
+    };
+    article.status = statuses[action];
+    if (article.status === 'PUBLISHED') article.publishedAt = new Date().toISOString();
+    saveStoredArticles(articles);
   },
 
   async deleteArticle(id: number): Promise<void> {

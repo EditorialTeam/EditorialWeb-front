@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { articlesApi } from '@/core/api/articlesApi';
+import { articlePermissions } from '@/core/api/articlePermissions';
+import { ArticleResponse } from '@/core/api/types';
 import { useAuth } from '@/core/auth/AuthContext';
 import { Button } from '@/components/ui/Button';
 import {
@@ -22,7 +24,8 @@ import {
 export const ArticleEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, canWrite, setDevRole } = useAuth();
+  const { user, canWrite, setDevRole, isMockMode } = useAuth();
+  const [article, setArticle] = useState<ArticleResponse | null>(null);
 
   const isEditMode = Boolean(id);
   const articleId = id ? parseInt(id, 10) : NaN;
@@ -36,7 +39,14 @@ export const ArticleEditorPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isEditMode) return;
+    let cancelled = false;
+    if (!isEditMode) {
+      setArticle(null);
+      setTitle('');
+      setContent('');
+      setIsLoading(false);
+      return;
+    }
 
     if (isNaN(articleId)) {
       setError('Некорректный ID статьи');
@@ -46,21 +56,25 @@ export const ArticleEditorPage: React.FC = () => {
 
     const loadArticle = async () => {
       setIsLoading(true);
+      setArticle(null);
       setError(null);
       try {
         const data = await articlesApi.getById(articleId);
+        if (cancelled) return;
+        setArticle(data);
         setTitle(data.title);
         setContent(data.content);
       } catch (err: any) {
         console.error('Failed to load article for editing:', err);
-        setError(err.message || 'Не удалось загрузить статью');
+        if (!cancelled) setError(err.message || 'Не удалось загрузить статью');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     loadArticle();
-  }, [articleId, isEditMode]);
+    return () => { cancelled = true; };
+  }, [articleId, isEditMode, isMockMode, user?.accountId]);
 
   const insertMarkdown = (prefix: string, suffix: string = '') => {
     const textarea = document.getElementById('article-content-textarea') as HTMLTextAreaElement;
@@ -82,6 +96,7 @@ export const ArticleEditorPage: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite || (isEditMode && (!article || !articlePermissions(article, user).edit))) return;
     setError(null);
 
     // Validation matching backend article-service constraints
@@ -146,13 +161,13 @@ export const ArticleEditorPage: React.FC = () => {
           Текущая роль вашего аккаунта: <strong>{user?.role || 'Гость'}</strong>.
         </p>
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button
+          {isMockMode && <Button
             size="sm"
             onClick={() => setDevRole('AUTHOR')}
             className="w-full sm:w-auto"
           >
             Переключить роль на AUTHOR
-          </Button>
+          </Button>}
           <Link to="/" className="w-full sm:w-auto">
             <Button variant="outline" size="sm" className="w-full">
               Вернуться в каталог
@@ -171,6 +186,14 @@ export const ArticleEditorPage: React.FC = () => {
         <div className="h-64 bg-surface-container rounded w-full" />
       </div>
     );
+  }
+
+  if (isEditMode && (!article || !articlePermissions(article, user).edit)) {
+    return <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-2xl p-8 text-center space-y-4">
+      <h2 className="text-xl font-bold text-on-surface">Редактирование недоступно</h2>
+      <p className="text-sm text-secondary">{error || 'Ваши права или текущий статус статьи не позволяют изменить текст.'}</p>
+      <Link to="/?view=my"><Button variant="outline" size="sm">Мои статьи</Button></Link>
+    </div>;
   }
 
   return (

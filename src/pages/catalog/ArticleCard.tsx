@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArticleResponse } from '@/core/api/types';
 import { calculateReadingTime } from '@/core/utils/readingTime';
 import { Badge } from '@/components/ui/Badge';
+import { articleStatusLabels } from '@/core/api/articlePermissions';
 import { Clock, User as UserIcon, ArrowUpRight } from 'lucide-react';
 
 export interface ArticleCardProps {
@@ -34,7 +35,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
           <div className="flex items-center gap-2 text-xs text-on-surface-variant/80">
             <span className="flex items-center gap-1 font-medium">
               <UserIcon className="w-3.5 h-3.5 text-secondary" />
-              Автор #{article.authorAccountId}
+                {article.authorDisplayName || `Автор #${article.authorAccountId}`}
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -44,7 +45,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
           </div>
 
           <Badge variant="outline" className="font-mono text-[10px]">
-            #{article.id}
+            {article.status && article.status !== 'PUBLISHED' ? articleStatusLabels[article.status] : `#${article.id}`}
           </Badge>
         </div>
 
