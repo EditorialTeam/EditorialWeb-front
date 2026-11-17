@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { UserProfileData } from '@/core/profile/types';
+import { userApi } from '@/core/api/userApi';
 import { Camera, Image as ImageIcon } from 'lucide-react';
 
 export interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   profile: UserProfileData;
-  onSave: (updated: Partial<UserProfileData>) => void;
+  onSave: (updated: Partial<UserProfileData>) => Promise<void> | void;
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -18,12 +19,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   profile,
   onSave,
 }) => {
-  const [firstName, setFirstName] = useState(profile.firstName || '');
-  const [lastName, setLastName] = useState(profile.lastName || '');
-  const [username, setUsername] = useState(profile.username || '');
+  const [displayName, setDisplayName] = useState(
+    profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || ''
+  );
   const [bio, setBio] = useState(profile.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || '');
   const [isUrlInputVisible, setIsUrlInputVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setDisplayName(
+        profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || ''
+      );
+      setBio(profile.bio || '');
+      setAvatarUrl(profile.avatarUrl || '');
+      setError(null);
+    }
+  }, [isOpen, profile]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,16 +52,30 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      username: username.trim(),
-      bio: bio.trim(),
-      avatarUrl: avatarUrl.trim(),
-    });
-    onClose();
+    setIsSaving(true);
+    setError(null);
+    try {
+      // Send updates to user-service PATCH /api/users/me
+      await userApi.updateMe({
+        displayName: displayName.trim() || null,
+        profileDescription: bio.trim() || null,
+      });
+
+      // Update storage and parent state
+      await onSave({
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        avatarUrl: avatarUrl.trim(),
+      });
+      onClose();
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      setError(err.message || 'Не удалось сохранить изменения профиля');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -112,63 +140,56 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           />
         )}
 
-        {/* Name Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input
-            label="Имя"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="Алексей"
-            required
-            maxLength={50}
-          />
-          <Input
-            label="Фамилия"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Смирнов"
-            required
-            maxLength={50}
-          />
-        </div>
+        {error && (
+          <div className="p-3 rounded-xl bg-error/10 border border-error/20 text-error text-xs leading-relaxed">
+            {error}
+          </div>
+        )}
 
-        {/* Username */}
+        {/* Display Name */}
         <Input
-          label="Имя пользователя (псевдоним)"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="alex_smirnov"
-          required
+          label="Отображаемое имя (displayName)"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="Иван Иванов"
           maxLength={100}
-          helperText="Используется для упоминаний и адреса вашего профиля"
+          helperText="Имя, которое видят читатели в ваших статьях и комментариях"
+        />
+
+        {/* Username (Readonly) */}
+        <Input
+          label="Тег аккаунта (@username)"
+          value={profile.username}
+          disabled
+          helperText="Уникальный тег учетной записи (задаётся при регистрации)"
         />
 
         {/* Bio */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label htmlFor="bio-input" className="block text-xs font-semibold text-on-surface">
-              Краткое описание (Bio)
+              Описание профиля (profileDescription)
             </label>
-            <span className="text-[11px] font-mono text-secondary">{bio.length} / 250</span>
+            <span className="text-[11px] font-mono text-secondary">{bio.length} / 500</span>
           </div>
           <textarea
             id="bio-input"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder="Расскажите о своих интересах, публикациях или исследовательских темах..."
+            placeholder="Расскажите о своих интересах, публикациях или темах..."
             rows={3}
-            maxLength={250}
+            maxLength={500}
             className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors leading-relaxed"
           />
         </div>
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-outline-variant">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSaving}>
             Отмена
           </Button>
-          <Button type="submit" size="sm">
-            Сохранить изменения
+          <Button type="submit" size="sm" disabled={isSaving}>
+            {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
           </Button>
         </div>
       </form>

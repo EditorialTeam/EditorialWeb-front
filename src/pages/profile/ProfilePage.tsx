@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/core/auth/AuthContext';
 import { articlesApi } from '@/core/api/articlesApi';
+import { userApi } from '@/core/api/userApi';
 import { ArticleResponse } from '@/core/api/types';
 import { profileStorage } from '@/core/profile/profileStorage';
 import { UserProfileData, TrackedAuthor, BookmarkRecord } from '@/core/profile/types';
@@ -55,6 +56,34 @@ export const ProfilePage: React.FC = () => {
     window.addEventListener('editorial_profile_updated', handleUpdate);
     return () => window.removeEventListener('editorial_profile_updated', handleUpdate);
   }, []);
+
+  // Fetch real profile from user-service GET /api/users/me
+  useEffect(() => {
+    let cancelled = false;
+    const fetchUserProfile = async () => {
+      try {
+        const backendProfile = await userApi.getMe();
+        if (!cancelled && backendProfile) {
+          const updated: Partial<UserProfileData> = {
+            username: backendProfile.username || undefined,
+            displayName: backendProfile.displayName || undefined,
+            bio: backendProfile.profileDescription || undefined,
+            role: user?.role || undefined,
+          };
+          profileStorage.updateProfile(updated);
+          setProfile((prev) => ({ ...prev, ...updated }));
+        }
+      } catch (err) {
+        console.warn('Could not load profile from user-service:', err);
+      }
+    };
+    if (user) {
+      fetchUserProfile();
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Fetch articles from API
   useEffect(() => {

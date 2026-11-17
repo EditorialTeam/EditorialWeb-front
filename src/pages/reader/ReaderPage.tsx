@@ -23,6 +23,8 @@ import {
   Heart,
 } from 'lucide-react';
 import { profileStorage } from '@/core/profile/profileStorage';
+import { ArticleReactions } from './components/ArticleReactions';
+import { CommentsSection } from './components/CommentsSection';
 
 export const ReaderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -341,6 +343,16 @@ export const ReaderPage: React.FC = () => {
             {article.content}
           </ReactMarkdown>
         </div>
+
+        {/* Article Reactions */}
+        <ArticleReactions articleId={article.id} />
+
+        {/* Comments Section */}
+        <CommentsSection
+          articleId={article.id}
+          articleAuthorId={article.authorAccountId || article.authorId || 0}
+          isPublished={article.status === 'PUBLISHED'}
+        />
 
         {/* Footer info strip */}
         <div className="mt-16 pt-8 border-t border-outline-variant flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-secondary">

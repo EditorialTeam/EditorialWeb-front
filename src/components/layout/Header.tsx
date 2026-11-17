@@ -11,10 +11,13 @@ import {
   Database,
   Radio,
   ChevronDown,
+  ShieldCheck,
+  FileText,
+  CheckSquare,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { user, isAuthenticated, canWrite, logout, isMockMode, setMockMode, setDevRole } =
+  const { user, isAuthenticated, canWrite, canModerate, logout, isMockMode, setMockMode, setDevRole } =
     useAuth();
   const navigate = useNavigate();
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
@@ -38,13 +41,43 @@ export const Header: React.FC = () => {
             <span className="font-extrabold tracking-tight">Editorial</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-2 text-sm font-medium text-secondary">
+          <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium text-secondary">
             <Link
               to="/"
               className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container"
             >
               Каталог
             </Link>
+            {canWrite && (
+              <Link
+                to="/author"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                title="Авторская панель и управление своими статьями"
+              >
+                <FileText className="w-4 h-4" />
+                Мои статьи
+              </Link>
+            )}
+            {canModerate && (
+              <Link
+                to="/editor/moderation"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                title="Очередь модерации статей"
+              >
+                <CheckSquare className="w-4 h-4 text-amber-600" />
+                Модерация
+              </Link>
+            )}
+            {user?.role === 'ADMIN' && (
+              <Link
+                to="/admin"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                title="Администраторская панель управления"
+              >
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                Админ-панель
+              </Link>
+            )}
             {canWrite && (
               <Link
                 to="/editor"
