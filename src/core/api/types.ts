@@ -1,6 +1,7 @@
 export type AccountRole = 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
 
 export type ArticleStatus = 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
+export type ArticleScope = 'published' | 'my' | 'review';
 
 export interface RegisterAccountRequest {
   username: string;

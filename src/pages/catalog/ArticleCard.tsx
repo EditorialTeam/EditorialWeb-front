@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArticleResponse } from '@/core/api/types';
 import { calculateReadingTime } from '@/core/utils/readingTime';
 import { profileStorage } from '@/core/profile/profileStorage';
+import { Badge } from '@/components/ui/Badge';
+import { articleStatusLabels } from '@/core/api/articlePermissions';
 import { Clock, User as UserIcon, ArrowUpRight, Bookmark, Heart } from 'lucide-react';
 
 export interface ArticleCardProps {
@@ -65,7 +67,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
               title="Перейти на страницу автора"
             >
               <UserIcon className="w-3.5 h-3.5 text-secondary" />
-              <span>{authorName}</span>
+              <span>{article.authorDisplayName || authorName || `Автор #${authorId}`}</span>
             </Link>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -74,7 +76,10 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
             </span>
           </div>
 
-          <div className="flex items-center gap-1 z-10">
+          <div className="flex items-center gap-1.5 z-10">
+            <Badge variant="outline" className="font-mono text-[10px]">
+              {article.status && article.status !== 'PUBLISHED' ? articleStatusLabels[article.status] : `#${article.id}`}
+            </Badge>
             <button
               type="button"
               onClick={handleToggleBookmark}

@@ -93,7 +93,7 @@ export const Header: React.FC = () => {
           {isAuthenticated && user ? (
             <div className="flex items-center gap-2">
               {/* Dev Role Switcher Dropdown */}
-              <div className="relative">
+              {isMockMode ? <div className="relative">
                 <button
                   onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
                   className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-surface-container text-xs font-medium text-secondary border border-outline-variant"
@@ -125,7 +125,7 @@ export const Header: React.FC = () => {
                     ))}
                   </div>
                 )}
-              </div>
+              </div> : <Badge variant="role">{user.role}</Badge>}
 
               {/* User profile link */}
               <Link

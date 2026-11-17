@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AccountRole, AuthUser, LoginRequest, RegisterAccountRequest } from '../api/types';
 import { authApi } from '../api/authApi';
+import { refreshSession } from '../api/client';
 import { tokenStorage } from './tokenStorage';
 import { extractAuthUser, isTokenExpired } from '../utils/jwt';
 
@@ -26,37 +27,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isMockMode, setIsMockModeState] = useState<boolean>(tokenStorage.isMockMode());
 
   useEffect(() => {
-    // Initialize session from storage
-    const storedUser = tokenStorage.getUser();
-    const accessToken = tokenStorage.getAccessToken();
-
-    if (accessToken && !isTokenExpired(accessToken)) {
-      const parsedUser = extractAuthUser(accessToken, storedUser?.email);
-      if (parsedUser) {
-        setUser({
-          ...parsedUser,
-          username: storedUser?.username || parsedUser.username,
-        });
-      } else if (storedUser) {
-        setUser(storedUser);
+    let cancelled = false;
+    const initialize = async () => {
+      const storedUser = tokenStorage.getUser();
+      try {
+        if (tokenStorage.isMockMode() && storedUser) {
+          if (!cancelled) setUser(storedUser);
+          return;
+        }
+        let accessToken = tokenStorage.getAccessToken();
+        if ((!accessToken || isTokenExpired(accessToken)) && tokenStorage.getRefreshToken()) {
+          await refreshSession();
+          accessToken = tokenStorage.getAccessToken();
+        }
+        if (accessToken && !isTokenExpired(accessToken)) {
+          const parsedUser = extractAuthUser(accessToken, storedUser?.email);
+          if (parsedUser && !cancelled) {
+            tokenStorage.setUser(parsedUser);
+            setUser(parsedUser);
+          }
+        } else if (!tokenStorage.getRefreshToken()) {
+          tokenStorage.clear();
+        }
+      } catch {
+        // The request client handles expired sessions. Keep the login form usable.
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    } else if (storedUser) {
-      // Token expired or not present, but user cached; try to keep if refresh token exists
-      if (tokenStorage.getRefreshToken()) {
-        setUser(storedUser);
-      } else {
-        tokenStorage.clear();
-      }
-    }
-
-    setIsLoading(false);
-
+    };
+    initialize();
     // Listen for global auth expiration events from API client
     const handleAuthExpired = () => {
       setUser(null);
     };
+    const handleAuthRefreshed = () => {
+      const token = tokenStorage.getAccessToken();
+      const currentUser = token && extractAuthUser(token, tokenStorage.getUser()?.email);
+      if (currentUser) {
+        tokenStorage.setUser(currentUser);
+        setUser(currentUser);
+      }
+    };
     window.addEventListener('editorial_auth_expired', handleAuthExpired);
-    return () => window.removeEventListener('editorial_auth_expired', handleAuthExpired);
+    window.addEventListener('editorial_auth_refreshed', handleAuthRefreshed);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('editorial_auth_expired', handleAuthExpired);
+      window.removeEventListener('editorial_auth_refreshed', handleAuthRefreshed);
+    };
   }, []);
 
   const login = async (data: LoginRequest) => {
@@ -66,12 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tokenStorage.setAccessToken(res.accessToken);
       tokenStorage.setRefreshToken(res.refreshToken);
 
-      const parsedUser = extractAuthUser(res.accessToken, data.email) || {
-        accountId: 1,
-        username: data.email.split('@')[0],
-        email: data.email,
-        role: 'USER',
-      };
+      const parsedUser = extractAuthUser(res.accessToken, data.email);
+      if (!parsedUser) throw new Error('Сервер вернул некорректный токен входа.');
 
       tokenStorage.setUser(parsedUser);
       setUser(parsedUser);
@@ -84,8 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await authApi.register(data);
-      // Auto-login after successful registration
-      await login({ email: data.email, password: data.password });
     } finally {
       setIsLoading(false);
     }
@@ -105,11 +117,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setMockMode = (enabled: boolean) => {
+    tokenStorage.clear();
+    setUser(null);
     tokenStorage.setMockMode(enabled);
     setIsMockModeState(enabled);
   };
 
   const setDevRole = (newRole: AccountRole) => {
+    if (!isMockMode) return;
     if (!user) {
       const dummyUser: AuthUser = {
         accountId: 99,

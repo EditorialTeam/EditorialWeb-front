@@ -4,9 +4,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { articlesApi } from '@/core/api/articlesApi';
 import { ArticleResponse } from '@/core/api/types';
+import { articlePermissions, articleStatusLabels } from '@/core/api/articlePermissions';
 import { useAuth } from '@/core/auth/AuthContext';
 import { calculateReadingTime } from '@/core/utils/readingTime';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   ArrowLeft,
@@ -25,11 +27,14 @@ import { profileStorage } from '@/core/profile/profileStorage';
 export const ReaderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, canModerate } = useAuth();
+  const { user, isMockMode } = useAuth();
 
   const [article, setArticle] = useState<ArticleResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   // Bookmark & Like state
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -46,6 +51,7 @@ export const ReaderPage: React.FC = () => {
   const articleId = id ? parseInt(id, 10) : NaN;
 
   useEffect(() => {
+    let cancelled = false;
     if (isNaN(articleId)) {
       setError('Статья не найдена');
       setIsLoading(false);
@@ -57,14 +63,16 @@ export const ReaderPage: React.FC = () => {
       setError(null);
       try {
         const data = await articlesApi.getById(articleId);
-        setArticle(data);
-        setIsBookmarked(profileStorage.isBookmarked(articleId));
-        setIsLiked(profileStorage.isLiked(articleId));
+        if (!cancelled) {
+          setArticle(data);
+          setIsBookmarked(profileStorage.isBookmarked(articleId));
+          setIsLiked(profileStorage.isLiked(articleId));
+        }
       } catch (err: any) {
         console.error('Failed to load article:', err);
-        setError(err.message || 'Статья не найдена');
+        if (!cancelled) setError(err.message || 'Статья не найдена');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
@@ -77,8 +85,11 @@ export const ReaderPage: React.FC = () => {
       }
     };
     window.addEventListener('editorial_profile_updated', handleProfileSync);
-    return () => window.removeEventListener('editorial_profile_updated', handleProfileSync);
-  }, [articleId]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('editorial_profile_updated', handleProfileSync);
+    };
+  }, [articleId, isMockMode, user?.accountId]);
 
   const handleToggleBookmark = () => {
     if (!article) return;
@@ -114,9 +125,25 @@ export const ReaderPage: React.FC = () => {
     }
   };
 
-  // Permissions: AUTHOR can edit/delete own article; EDITOR and ADMIN can edit/delete any
-  const isAuthor = Boolean(user && article && user.accountId === article.authorAccountId);
-  const canEditOrDelete = Boolean(isAuthor || canModerate);
+  const permissions = article ? articlePermissions(article, user) : null;
+  const handleAction = async (action: 'submit' | 'archive' | 'withdraw-from-review' | 'APPROVED' | 'REJECTED') => {
+    if (!article) return;
+    setIsUpdating(true);
+    setActionError(null);
+    try {
+      if (action === 'APPROVED' || action === 'REJECTED') {
+        await articlesApi.moderate(article.id, action, rejectionReason.trim() || undefined);
+        navigate('/?view=review');
+      } else {
+        await articlesApi.transition(article.id, action);
+        navigate(user?.accountId === article.authorAccountId ? '/?view=my' : '/');
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Не удалось изменить статус статьи');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const readingStats = calculateReadingTime(article?.content || '');
 
@@ -228,15 +255,15 @@ export const ReaderPage: React.FC = () => {
           </Button>
 
           {/* Actions for Author / Editor / Admin */}
-          {canEditOrDelete && (
+          {(permissions?.edit || permissions?.delete) && (
             <>
-              <Link to={`/editor/${article.id}`}>
+              {permissions.edit && <Link to={`/editor/${article.id}`}>
                 <Button variant="outline" size="sm" className="text-xs gap-1.5">
                   <PenSquare className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Изменить</span>
                 </Button>
-              </Link>
-              <Button
+              </Link>}
+              {permissions.delete && <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsDeleteOpen(true)}
@@ -244,7 +271,7 @@ export const ReaderPage: React.FC = () => {
                 title="Удалить публикацию"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              </Button>}
             </>
           )}
         </div>
@@ -252,8 +279,29 @@ export const ReaderPage: React.FC = () => {
 
       {/* Reader Column: strictly 720px max width as requested by DESIGN.md */}
       <article className="max-w-[720px] mx-auto pb-24">
+        {actionError && <div role="alert" className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 text-error text-sm">{actionError}</div>}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {permissions?.submit && <Button size="sm" disabled={isUpdating} onClick={() => handleAction('submit')}>Отправить на проверку</Button>}
+          {permissions?.archive && <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleAction('archive')}>В архив</Button>}
+          {permissions?.withdraw && <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleAction('withdraw-from-review')}>Вернуть в черновики</Button>}
+        </div>
+        {permissions?.moderate && <div className="mb-6 p-4 rounded-xl border border-outline-variant bg-surface space-y-3">
+          <label className="block text-xs font-semibold text-on-surface" htmlFor="rejection-reason">Комментарий при отклонении (необязательно)</label>
+          <textarea id="rejection-reason" value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} className="w-full p-3 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface" />
+          <div className="flex gap-2">
+            <Button size="sm" disabled={isUpdating} onClick={() => handleAction('APPROVED')}>Опубликовать</Button>
+            <Button size="sm" variant="outline" disabled={isUpdating} onClick={() => handleAction('REJECTED')}>Отклонить</Button>
+          </div>
+        </div>}
         {/* Publication Meta Header */}
         <div className="pb-8 border-b border-outline-variant space-y-4">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-mono text-xs">
+              Публикация #{article.id}
+            </Badge>
+            {article.status && <Badge variant="outline">{articleStatusLabels[article.status]}</Badge>}
+          </div>
+
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-on-surface tracking-tight leading-[1.2]">
             {article.title}
           </h1>
@@ -269,7 +317,7 @@ export const ReaderPage: React.FC = () => {
                 {(article.authorDisplayName || 'A').charAt(0).toUpperCase()}
               </span>
               <span className="font-medium text-on-surface group-hover:underline">
-                {article.authorDisplayName || 'Автор'}
+                {article.authorDisplayName || `Автор #${article.authorAccountId || article.authorId || 1}`}
               </span>
             </Link>
             <span>•</span>
@@ -298,7 +346,7 @@ export const ReaderPage: React.FC = () => {
         <div className="mt-16 pt-8 border-t border-outline-variant flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-secondary">
           <div className="flex items-center gap-2">
             <UserIcon className="w-4 h-4 text-secondary" />
-            <span>Материал проверен редакцией Editorial</span>
+            <span>{article.status === 'PUBLISHED' ? 'Материал проверен редакцией Editorial' : 'Материал ещё не опубликован'}</span>
           </div>
           <Link to="/" className="text-primary hover:underline font-semibold">
             ← Вернуться ко всем статьям
