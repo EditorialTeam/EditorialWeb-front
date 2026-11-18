@@ -10,7 +10,6 @@ import { Select, SelectOption } from '@/components/ui/Select';
 import {
   Search,
   PenSquare,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -39,7 +38,6 @@ export const CatalogPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Pagination (prepared for server pagination)
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,19 +113,7 @@ export const CatalogPage: React.FC = () => {
         const matchesAuthor =
           selectedAuthor === 'all' || String(article.authorAccountId) === selectedAuthor;
 
-        let matchesCategory = true;
-        if (selectedCategory !== 'all') {
-          const text = (article.title + ' ' + article.content).toLowerCase();
-          if (selectedCategory === 'Дизайн') {
-            matchesCategory = text.includes('дизайн') || text.includes('типографик') || text.includes('сетк') || article.id === 1;
-          } else if (selectedCategory === 'Технологии') {
-            matchesCategory = text.includes('технолог') || text.includes('агент') || text.includes('код') || text.includes('микросервис') || article.id === 3;
-          } else if (selectedCategory === 'Культура') {
-            matchesCategory = text.includes('культур') || text.includes('ризограф') || text.includes('зин') || article.id === 2;
-          }
-        }
-
-        return matchesQuery && matchesAuthor && matchesCategory;
+        return matchesQuery && matchesAuthor;
       })
       .sort((a, b) => {
         if (sortBy === 'newest') return b.id - a.id;
@@ -135,7 +121,7 @@ export const CatalogPage: React.FC = () => {
         if (sortBy === 'title') return a.title.localeCompare(b.title, 'ru');
         return 0;
       });
-  }, [articles, searchQuery, selectedAuthor, selectedCategory, sortBy]);
+  }, [articles, searchQuery, selectedAuthor, sortBy]);
 
   // Client pagination slice
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / pageSize));
@@ -147,7 +133,7 @@ export const CatalogPage: React.FC = () => {
   // Reset to first page when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedAuthor, selectedCategory, sortBy, scope]);
+  }, [searchQuery, selectedAuthor, sortBy, scope]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -159,12 +145,9 @@ export const CatalogPage: React.FC = () => {
       <div className="border-b border-outline-variant pb-8 pt-2">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-on-surface tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-bold text-on-surface tracking-tight">
               Каталог публикаций
             </h1>
-            <p className="text-secondary text-sm sm:text-base mt-2 max-w-xl leading-relaxed">
-              Независимые материалы, архитектурные обзоры и статьи. Читайте или делитесь своими мыслями.
-            </p>
           </div>
 
           {canWrite && (
@@ -198,24 +181,6 @@ export const CatalogPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Category Pill Filters (matching profile_design) */}
-        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['all', 'Дизайн', 'Технологии', 'Культура'].map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'bg-surface hover:bg-surface-container text-secondary hover:text-on-surface border border-outline-variant'
-              }`}
-            >
-              {cat === 'all' ? 'Все темы' : cat}
-            </button>
-          ))}
-        </div>
-
         {/* Search & Custom Select Toolbar */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Search Bar */}
@@ -225,12 +190,14 @@ export const CatalogPage: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по названию или тексту статьи..."
+              aria-label="Поиск статей"
+              placeholder="Поиск статей"
               className="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
+                aria-label="Очистить поиск"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
               >
                 <X className="w-4 h-4" />
@@ -291,7 +258,7 @@ export const CatalogPage: React.FC = () => {
 
       {/* Main Content Area */}
       {!authLoading && !isAuthenticated && !isMockMode ? (
-        <div className="bg-surface border border-outline-variant rounded-2xl p-8 text-center max-w-md mx-auto my-12 space-y-4">
+        <div className="bg-surface border border-outline-variant rounded-xl p-8 text-center max-w-md mx-auto my-12 space-y-4">
           <h2 className="text-xl font-bold text-on-surface">Войдите, чтобы читать статьи</h2>
           <p className="text-sm text-secondary">Публикации Editorial доступны пользователям с аккаунтом.</p>
           <Link to="/auth" className="inline-block"><Button size="sm">Войти в аккаунт</Button></Link>
@@ -301,7 +268,7 @@ export const CatalogPage: React.FC = () => {
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
-              className="bg-surface border border-outline-variant rounded-2xl p-6 h-64 animate-pulse flex flex-col justify-between"
+              className="bg-surface border border-outline-variant rounded-xl p-6 h-64 animate-pulse flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="h-4 bg-surface-container rounded w-1/3" />
@@ -314,7 +281,7 @@ export const CatalogPage: React.FC = () => {
           ))}
         </div>
       ) : error ? (
-        <div className="bg-surface border border-error/30 rounded-2xl p-8 text-center max-w-md mx-auto my-12">
+        <div className="bg-surface border border-error/30 rounded-xl p-8 text-center max-w-md mx-auto my-12">
           <p className="text-sm text-error font-medium mb-4">{error}</p>
           <Button variant="outline" size="sm" onClick={loadArticles} className="gap-2">
             <RefreshCw className="w-4 h-4" />
@@ -322,24 +289,23 @@ export const CatalogPage: React.FC = () => {
           </Button>
         </div>
       ) : filteredArticles.length === 0 ? (
-        <div className="bg-surface border border-outline-variant rounded-2xl p-12 text-center max-w-lg mx-auto my-12 space-y-4">
+        <div className="bg-surface border border-outline-variant rounded-xl p-12 text-center max-w-lg mx-auto my-12 space-y-4">
           <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mx-auto text-secondary">
             <BookOpen className="w-6 h-6" />
           </div>
           <h3 className="text-lg font-bold text-on-surface">Статьи не найдены</h3>
           <p className="text-sm text-secondary leading-relaxed">
-            {searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all'
+            {searchQuery || selectedAuthor !== 'all'
               ? 'По заданным параметрам поиска ничего не нашлось. Попробуйте сбросить фильтры.'
               : 'В редакции пока нет опубликованных статей.'}
           </p>
-          {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all') && (
+          {(searchQuery || selectedAuthor !== 'all') && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setSearchQuery('');
                 setSelectedAuthor('all');
-                setSelectedCategory('all');
               }}
             >
               Сбросить фильтры
@@ -353,10 +319,7 @@ export const CatalogPage: React.FC = () => {
             <span>
               Найдено статей: <strong className="text-on-surface">{filteredArticles.length}</strong>
             </span>
-            <span className="flex items-center gap-1">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Сортировка: {sortBy === 'newest' ? 'новые' : sortBy === 'oldest' ? 'старые' : 'по алфавиту'}
-            </span>
+
           </div>
 
           {/* Cards Grid */}

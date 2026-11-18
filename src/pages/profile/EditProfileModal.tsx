@@ -59,8 +59,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     try {
       // Send updates to user-service PATCH /api/users/me
       await userApi.updateMe({
-        displayName: displayName.trim() || null,
-        profileDescription: bio.trim() || null,
+        displayName: displayName.trim(),
+        profileDescription: bio.trim(),
       });
 
       // Update storage and parent state
@@ -91,7 +91,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             />
             <label
               htmlFor="avatar-file-input"
-              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center cursor-pointer shadow-sm hover:bg-primary-hover transition-colors"
+              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center cursor-pointer hover:bg-primary-hover transition-colors"
               title="Загрузить фото с устройства"
             >
               <Camera className="w-3.5 h-3.5" />

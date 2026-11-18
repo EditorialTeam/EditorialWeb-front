@@ -143,8 +143,8 @@ export const UserProfilePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto py-12 space-y-6 animate-pulse">
-        <div className="h-44 bg-surface border border-outline-variant rounded-2xl" />
-        <div className="h-64 bg-surface border border-outline-variant rounded-2xl" />
+        <div className="h-44 bg-surface border border-outline-variant rounded-xl" />
+        <div className="h-64 bg-surface border border-outline-variant rounded-xl" />
       </div>
     );
   }
@@ -233,18 +233,18 @@ export const UserProfilePage: React.FC = () => {
       </div>
 
       {/* Author Hero Card */}
-      <div className="bg-surface border border-outline-variant rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="bg-surface border border-outline-variant rounded-xl p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
             <img
               src={avatarUrl}
               alt={authorName}
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover bg-surface-container shadow-sm border border-outline-variant"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover bg-surface-container border border-outline-variant"
             />
 
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
+                <h1 className="text-2xl sm:text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
                   {authorName}
                 </h1>
                 <Badge variant="role">AUTHOR</Badge>
@@ -308,7 +308,7 @@ export const UserProfilePage: React.FC = () => {
         </div>
 
         {articles.length === 0 ? (
-          <div className="bg-surface border border-dashed border-outline-variant rounded-2xl p-12 text-center space-y-3">
+          <div className="bg-surface border border-dashed border-outline-variant rounded-xl p-12 text-center space-y-3">
             <BookOpen className="w-8 h-8 text-secondary/60 mx-auto" />
             <h3 className="text-base font-bold text-on-surface">Нет опубликованных статей</h3>
             <p className="text-xs text-secondary max-w-sm mx-auto leading-relaxed">

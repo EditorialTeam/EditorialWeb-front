@@ -9,7 +9,7 @@ export const Card: React.FC<CardProps> = ({ className, hoverable = false, childr
   return (
     <div
       className={cn(
-        'bg-surface border border-outline-variant rounded-xl p-5 sm:p-6 transition-all',
+        'bg-surface border border-outline-variant rounded-xl p-5 sm:p-6 transition-colors',
         hoverable && 'hover:border-outline hover:bg-surface-container-low/40 cursor-pointer',
         className
       )}

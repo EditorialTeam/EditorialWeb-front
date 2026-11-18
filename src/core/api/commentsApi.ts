@@ -1,3 +1,4 @@
+import { collectPages } from './pagination';
 import { request } from './client';
 import {
   CommentResponse,
@@ -7,6 +8,12 @@ import {
 } from './types';
 
 export const commentsApi = {
+  getAllRoots(articleId: number): Promise<CommentResponse[]> {
+    return collectPages((page) => commentsApi.getRootComments(articleId, page, 100));
+  },
+  getAllReplies(articleId: number, parentId: number): Promise<CommentResponse[]> {
+    return collectPages((page) => commentsApi.getReplies(articleId, parentId, page, 100));
+  },
   getRootComments(
     articleId: number,
     page = 0,
@@ -44,8 +51,8 @@ export const commentsApi = {
     articleId: number,
     commentId: number,
     data: PatchCommentRequest
-  ): Promise<CommentResponse> {
-    return request<CommentResponse>(
+  ): Promise<PatchCommentRequest> {
+    return request<PatchCommentRequest>(
       `/api/articles/${articleId}/comments/${commentId}`,
       {
         method: 'PATCH',

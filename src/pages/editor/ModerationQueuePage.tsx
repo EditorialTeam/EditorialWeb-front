@@ -105,7 +105,7 @@ export const ModerationQueuePage: React.FC = () => {
               Очередь: {articles.length}
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-on-surface tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Редакторская панель
           </h1>
           <p className="text-sm text-secondary mt-1">
@@ -125,11 +125,11 @@ export const ModerationQueuePage: React.FC = () => {
           Загрузка очереди модерации...
         </div>
       ) : error ? (
-        <div className="p-6 rounded-2xl bg-error/10 border border-error/20 text-error text-center text-sm">
+        <div className="p-6 rounded-xl bg-error/10 border border-error/20 text-error text-center text-sm">
           {error}
         </div>
       ) : articles.length === 0 ? (
-        <div className="py-20 text-center rounded-2xl border border-dashed border-outline-variant bg-surface space-y-4">
+        <div className="py-20 text-center rounded-xl border border-dashed border-outline-variant bg-surface space-y-4">
           <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
             <Sparkles className="w-6 h-6" />
           </div>
@@ -148,7 +148,7 @@ export const ModerationQueuePage: React.FC = () => {
             return (
               <div
                 key={article.id}
-                className="bg-surface border border-outline-variant hover:border-outline rounded-2xl p-5 sm:p-6 transition-all shadow-sm space-y-4"
+                className="bg-surface border border-outline-variant hover:border-outline rounded-xl p-5 sm:p-6 transition-colors space-y-4"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-2 flex-1 min-w-0">

@@ -24,7 +24,7 @@ export interface TrackedAuthor {
 export interface BookmarkRecord {
   articleId: number;
   savedAt: string;
-  category: 'Дизайн' | 'Технологии' | 'Культура' | 'Медиа';
+  category?: 'Дизайн' | 'Технологии' | 'Культура' | 'Медиа';
 }
 
 export interface ProfileStats {
