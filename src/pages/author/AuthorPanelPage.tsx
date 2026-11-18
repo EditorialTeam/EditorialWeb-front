@@ -119,7 +119,7 @@ export const AuthorPanelPage: React.FC = () => {
             </span>
             <Badge variant="role">{user?.role}</Badge>
           </div>
-          <h1 className="text-3xl font-extrabold text-on-surface tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Авторская панель
           </h1>
           <p className="text-sm text-secondary mt-1">
@@ -158,9 +158,9 @@ export const AuthorPanelPage: React.FC = () => {
               key={item.filter}
               type="button"
               onClick={() => setStatusFilter(item.filter)}
-              className={`p-3.5 rounded-2xl border text-left transition-all ${
+              className={`p-3.5 rounded-xl border text-left transition-colors ${
                 isSelected
-                  ? 'bg-primary/5 border-primary shadow-sm'
+                  ? 'bg-primary/5 border-primary'
                   : 'bg-surface hover:bg-surface-container border-outline-variant'
               }`}
             >
@@ -168,7 +168,7 @@ export const AuthorPanelPage: React.FC = () => {
                 <span className="text-xs font-medium">{item.label}</span>
                 <Icon className="w-3.5 h-3.5" />
               </div>
-              <div className="text-2xl font-extrabold text-on-surface font-mono">
+              <div className="text-2xl font-bold text-on-surface font-mono">
                 {item.count}
               </div>
             </button>
@@ -182,11 +182,11 @@ export const AuthorPanelPage: React.FC = () => {
           Загрузка ваших публикаций...
         </div>
       ) : error ? (
-        <div className="p-6 rounded-2xl bg-error/10 border border-error/20 text-error text-center text-sm">
+        <div className="p-6 rounded-xl bg-error/10 border border-error/20 text-error text-center text-sm">
           {error}
         </div>
       ) : filteredArticles.length === 0 ? (
-        <div className="py-16 text-center rounded-2xl border border-dashed border-outline-variant bg-surface space-y-4">
+        <div className="py-16 text-center rounded-xl border border-dashed border-outline-variant bg-surface space-y-4">
           <FileText className="w-10 h-10 text-secondary mx-auto" />
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-on-surface">Статей не найдено</h3>
@@ -212,7 +212,7 @@ export const AuthorPanelPage: React.FC = () => {
             return (
               <div
                 key={article.id}
-                className="bg-surface border border-outline-variant hover:border-outline rounded-2xl p-5 sm:p-6 transition-all shadow-sm space-y-4"
+                className="bg-surface border border-outline-variant hover:border-outline rounded-xl p-5 sm:p-6 transition-colors space-y-4"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="space-y-2 flex-1 min-w-0">

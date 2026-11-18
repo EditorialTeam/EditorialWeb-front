@@ -49,7 +49,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Dialog */}
       <div
-        className={`relative w-full ${maxWidths[maxWidth]} bg-surface rounded-2xl border border-outline-variant shadow-lg p-6 z-10 animate-in fade-in zoom-in-95 duration-150`}
+        className={`relative w-full ${maxWidths[maxWidth]} bg-surface rounded-xl border border-outline-variant shadow-lg p-6 z-10 animate-in fade-in zoom-in-95 duration-150`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-outline-variant mb-4">
           {title && <h3 className="text-lg font-bold text-on-surface tracking-tight">{title}</h3>}

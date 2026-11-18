@@ -1,3 +1,4 @@
+import { collectPages } from '@/core/api/pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/core/auth/AuthContext';
@@ -50,8 +51,7 @@ export const AdminPanelPage: React.FC = () => {
   const loadAccounts = useCallback(async () => {
     setIsLoadingAccounts(true);
     try {
-      const res = await adminApi.getAccounts(0, 100);
-      setAccounts(res.content || []);
+      setAccounts(await collectPages((page) => adminApi.getAccounts(page, 100)));
     } catch (err: any) {
       console.error('Failed to load accounts:', err);
       setError(err.message || 'Ошибка загрузки учетных записей');
@@ -63,8 +63,7 @@ export const AdminPanelPage: React.FC = () => {
   const loadProfiles = useCallback(async () => {
     setIsLoadingProfiles(true);
     try {
-      const res = await adminApi.getProfiles(0, 100);
-      setProfiles(res.content || []);
+      setProfiles(await collectPages((page) => adminApi.getProfiles(page, 100)));
     } catch (err: any) {
       console.error('Failed to load profiles:', err);
       setError(err.message || 'Ошибка загрузки профилей');
@@ -82,7 +81,8 @@ export const AdminPanelPage: React.FC = () => {
     loadProfiles();
   }, [user, navigate, loadAccounts, loadProfiles]);
 
-  const handleEditAccountClick = (acc: AdminAccountResponse) => {
+  const handleEditAccountClick = async (acc: AdminAccountResponse) => {
+    try { acc = await adminApi.getAccountById(acc.accountId); } catch (err) { setError((err as Error).message); return; }
     setEditAccountTarget(acc);
     setEditRole(acc.role);
     setEditEmail(acc.email);
@@ -122,8 +122,8 @@ export const AdminPanelPage: React.FC = () => {
     setIsSavingProfile(true);
     try {
       await adminApi.patchProfile(editProfileTarget.accountId, {
-        displayName: editDisplayName.trim() || null,
-        profileDescription: editBio.trim() || null,
+        displayName: editDisplayName.trim(),
+        profileDescription: editBio.trim(),
       });
       setEditProfileTarget(null);
       await loadProfiles();
@@ -171,7 +171,7 @@ export const AdminPanelPage: React.FC = () => {
               Роль ADMIN
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-on-surface tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
             Администраторская панель
           </h1>
           <p className="text-sm text-secondary mt-1">
@@ -206,9 +206,9 @@ export const AdminPanelPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('accounts')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === 'accounts'
-                ? 'bg-surface text-on-surface shadow-sm'
+                ? 'bg-surface text-on-surface'
                 : 'text-secondary hover:text-on-surface'
             }`}
           >
@@ -218,9 +218,9 @@ export const AdminPanelPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('profiles')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === 'profiles'
-                ? 'bg-surface text-on-surface shadow-sm'
+                ? 'bg-surface text-on-surface'
                 : 'text-secondary hover:text-on-surface'
             }`}
           >
@@ -250,7 +250,7 @@ export const AdminPanelPage: React.FC = () => {
 
       {/* Tab 1: Accounts Table */}
       {activeTab === 'accounts' && (
-        <div className="bg-surface rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
+        <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container border-b border-outline-variant text-secondary font-semibold">
@@ -314,7 +314,7 @@ export const AdminPanelPage: React.FC = () => {
 
       {/* Tab 2: Profiles Table */}
       {activeTab === 'profiles' && (
-        <div className="bg-surface rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
+        <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container border-b border-outline-variant text-secondary font-semibold">
@@ -412,9 +412,9 @@ export const AdminPanelPage: React.FC = () => {
                     key={r}
                     type="button"
                     onClick={() => setEditRole(r)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
+                    className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-colors ${
                       editRole === r
-                        ? 'bg-primary text-on-primary border-primary shadow-sm'
+                        ? 'bg-primary text-on-primary border-primary'
                         : 'bg-surface hover:bg-surface-container border-outline-variant text-secondary'
                     }`}
                   >

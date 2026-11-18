@@ -132,7 +132,7 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
     if (match) {
       const articleId = parseInt(match[1], 10);
       const rootCommentId = parseInt(match[2], 10);
-      return (await mockApi.getReplies(articleId, rootCommentId)) as unknown as T;
+      return (await mockApi.getReplies(articleId, rootCommentId, Number(url.searchParams.get('page') || 0), Number(url.searchParams.get('size') || 20))) as unknown as T;
     }
   }
 
@@ -140,7 +140,7 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
     const match = endpoint.match(/\/api\/articles\/(\d+)\/comments/);
     if (match) {
       const articleId = parseInt(match[1], 10);
-      return (await mockApi.getRootComments(articleId)) as unknown as T;
+      return (await mockApi.getRootComments(articleId, Number(url.searchParams.get('page') || 0), Number(url.searchParams.get('size') || 20))) as unknown as T;
     }
   }
 
@@ -216,8 +216,15 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
   }
 
   // Mock admin
-  if (endpoint.startsWith('/api/admin/accounts') && method === 'GET') {
-    return (await mockApi.getAccounts()) as unknown as T;
+  if (endpoint.startsWith('/api/admin/accounts/') && method === 'GET') {
+    const id = Number(endpoint.split('/').pop());
+    const result = await mockApi.getAccounts(0, Number.MAX_SAFE_INTEGER);
+    const account = result.content.find((item) => item.accountId === id);
+    if (!account) throw Object.assign(new Error('Аккаунт не найден'), { status: 404 });
+    return account as T;
+  }
+  if (endpoint === '/api/admin/accounts' && method === 'GET') {
+    return (await mockApi.getAccounts(Number(url.searchParams.get('page') || 0), Number(url.searchParams.get('size') || 50))) as unknown as T;
   }
 
   if (endpoint.startsWith('/api/admin/accounts/') && method === 'PATCH') {
@@ -226,7 +233,7 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
   }
 
   if (endpoint.startsWith('/api/admin/users') && method === 'GET') {
-    return (await mockApi.getProfiles()) as unknown as T;
+    return (await mockApi.getProfiles(Number(url.searchParams.get('page') || 0), Number(url.searchParams.get('size') || 50))) as unknown as T;
   }
 
   if (endpoint.startsWith('/api/admin/users/') && method === 'PATCH') {

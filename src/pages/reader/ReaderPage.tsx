@@ -1,3 +1,4 @@
+import { useArticleReaction } from '@/core/reactions/useArticleReaction';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -40,7 +41,7 @@ export const ReaderPage: React.FC = () => {
 
   // Bookmark & Like state
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
+
 
   // Reader tools
   const [fontSizeOffset, setFontSizeOffset] = useState<number>(0); // -2 to +4 px
@@ -51,6 +52,8 @@ export const ReaderPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const articleId = id ? parseInt(id, 10) : NaN;
+  const { reaction, pending: reactionPending, error: reactionError, toggle, canReact } = useArticleReaction(articleId);
+  const isLiked = reaction === 'LIKE';
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +71,6 @@ export const ReaderPage: React.FC = () => {
         if (!cancelled) {
           setArticle(data);
           setIsBookmarked(profileStorage.isBookmarked(articleId));
-          setIsLiked(profileStorage.isLiked(articleId));
         }
       } catch (err: any) {
         console.error('Failed to load article:', err);
@@ -83,7 +85,6 @@ export const ReaderPage: React.FC = () => {
     const handleProfileSync = () => {
       if (!isNaN(articleId)) {
         setIsBookmarked(profileStorage.isBookmarked(articleId));
-        setIsLiked(profileStorage.isLiked(articleId));
       }
     };
     window.addEventListener('editorial_profile_updated', handleProfileSync);
@@ -101,8 +102,7 @@ export const ReaderPage: React.FC = () => {
 
   const handleToggleLike = () => {
     if (!article) return;
-    const next = profileStorage.toggleLike(article.id);
-    setIsLiked(next);
+    void toggle('LIKE');
   };
 
   const handleDelete = async () => {
@@ -188,7 +188,7 @@ export const ReaderPage: React.FC = () => {
   return (
     <div className="animate-in fade-in duration-200">
       {/* Top Navigation Bar */}
-      <div className="max-w-[720px] mx-auto mb-8 flex items-center justify-between gap-4">
+      <div className="max-w-[720px] mx-auto mb-8 flex flex-wrap items-center justify-between gap-3">
         <Link to="/">
           <Button variant="ghost" size="sm" className="gap-1.5 text-secondary hover:text-on-surface -ml-2">
             <ArrowLeft className="w-4 h-4" />
@@ -196,7 +196,7 @@ export const ReaderPage: React.FC = () => {
           </Button>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Bookmark Button */}
           <Button
             variant={isBookmarked ? 'primary' : 'outline'}
@@ -210,16 +210,17 @@ export const ReaderPage: React.FC = () => {
           </Button>
 
           {/* Like Button */}
-          <Button
+          {canReact && <Button
             variant="outline"
             size="sm"
+            disabled={reactionPending}
             onClick={handleToggleLike}
             className={`text-xs gap-1.5 ${isLiked ? 'text-error border-error/50 bg-error/5' : ''}`}
             title={isLiked ? 'Убрать отметку «Нравится»' : 'Поставить отметку «Нравится»'}
           >
             <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-error' : ''}`} />
             <span className="hidden sm:inline">{isLiked ? 'Нравится' : 'Лайк'}</span>
-          </Button>
+          </Button>}
 
           {/* Font Resizer */}
           <div className="hidden sm:flex items-center gap-1 bg-surface border border-outline-variant rounded-xl p-1 text-xs text-secondary">
@@ -281,6 +282,7 @@ export const ReaderPage: React.FC = () => {
 
       {/* Reader Column: strictly 720px max width as requested by DESIGN.md */}
       <article className="max-w-[720px] mx-auto pb-24">
+        {reactionError && <p role="alert" className="mb-4 text-sm text-error">{reactionError}</p>}
         {actionError && <div role="alert" className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 text-error text-sm">{actionError}</div>}
         <div className="flex flex-wrap gap-2 mb-4">
           {permissions?.submit && <Button size="sm" disabled={isUpdating} onClick={() => handleAction('submit')}>Отправить на проверку</Button>}
@@ -297,12 +299,7 @@ export const ReaderPage: React.FC = () => {
         </div>}
         {/* Publication Meta Header */}
         <div className="pb-8 border-b border-outline-variant space-y-4">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="font-mono text-xs">
-              Публикация #{article.id}
-            </Badge>
-            {article.status && <Badge variant="outline">{articleStatusLabels[article.status]}</Badge>}
-          </div>
+          {article.status && article.status !== 'PUBLISHED' && <Badge variant="outline">{articleStatusLabels[article.status]}</Badge>}
 
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-on-surface tracking-tight leading-[1.2]">
             {article.title}
@@ -315,7 +312,7 @@ export const ReaderPage: React.FC = () => {
               className="flex items-center gap-2 hover:text-primary group transition-colors"
               title="Перейти на страницу автора"
             >
-              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary group-hover:scale-105 transition-transform">
+              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary">
                 {(article.authorDisplayName || 'A').charAt(0).toUpperCase()}
               </span>
               <span className="font-medium text-on-surface group-hover:underline">

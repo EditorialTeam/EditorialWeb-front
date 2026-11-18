@@ -1,40 +1,14 @@
 import { UserProfileData, TrackedAuthor, BookmarkRecord } from './types';
 import { tokenStorage } from '../auth/tokenStorage';
 
-const PROFILE_STORAGE_KEY = 'editorial_user_profile_data';
-const BOOKMARKS_STORAGE_KEY = 'editorial_user_bookmarks';
-const LIKES_STORAGE_KEY = 'editorial_user_likes';
-const TRACKED_AUTHORS_KEY = 'editorial_tracked_authors';
-
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
-
-const DEFAULT_AUTHORS: TrackedAuthor[] = [
-  {
-    id: 1,
-    name: 'Алиса Ветрова',
-    specialty: 'Продуктовый дизайн, UI/UX',
-    avatarUrl:
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-    isFollowed: true,
-  },
-  {
-    id: 2,
-    name: 'Мария Соколова',
-    specialty: 'ИИ, Генеративный код',
-    avatarUrl:
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-    isFollowed: true,
-  },
-  {
-    id: 3,
-    name: 'Даниил Росс',
-    specialty: 'Книгопечатание, Арт-зины',
-    avatarUrl:
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    isFollowed: true,
-  },
-];
+const placeholderAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#e9ecef"/><circle cx="48" cy="36" r="16" fill="#9ca3af"/><path d="M16 96v-12a32 32 0 0164 0v12" fill="#9ca3af"/></svg>');
+const DEFAULT_AVATAR = placeholderAvatar;
+const DEFAULT_AUTHORS: TrackedAuthor[] = [];
+const storageKey = (kind: string) => `editorial_v2_${tokenStorage.isMockMode() ? 'demo' : 'live'}_${tokenStorage.getUser()?.accountId ?? 'guest'}_${kind}`;
+const read = <T>(kind: string, fallback: T): T => {
+  try { return JSON.parse(localStorage.getItem(storageKey(kind)) || 'null') ?? fallback; }
+  catch { return fallback; }
+};
 
 function notifyProfileChange() {
   window.dispatchEvent(new CustomEvent('editorial_profile_updated'));
@@ -43,7 +17,7 @@ function notifyProfileChange() {
 export const profileStorage = {
   getProfile(): UserProfileData {
     const user = tokenStorage.getUser();
-    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey('profile'));
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as UserProfileData;
@@ -62,19 +36,19 @@ export const profileStorage = {
 
     // Default profile
     const defaultProfile: UserProfileData = {
-      accountId: user?.accountId || 1,
-      username: user?.username || 'alex_smirnov',
-      email: user?.email || 'alex@example.com',
-      firstName: 'Алексей',
-      lastName: 'Смирнов',
-      displayName: 'Алексей Смирнов',
-      role: user?.role || 'AUTHOR',
-      bio: 'Интересуюсь генеративным артом, типографикой и культурой самиздата. Коллекционирую редкие арт-зины и исследую трансформацию экранного чтения.',
+      accountId: user?.accountId || 0,
+      username: user?.username || '',
+      email: user?.email || '',
+      firstName: '',
+      lastName: '',
+      displayName: user?.username || '',
+      role: user?.role || 'USER',
+      bio: '',
       avatarUrl: DEFAULT_AVATAR,
       createdAt: new Date().toISOString(),
     };
 
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(defaultProfile));
+    localStorage.setItem(storageKey('profile'), JSON.stringify(defaultProfile));
     return defaultProfile;
   },
 
@@ -88,7 +62,7 @@ export const profileStorage = {
           ? `${updates.firstName ?? current.firstName} ${updates.lastName ?? current.lastName}`.trim()
           : current.displayName,
     };
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(storageKey('profile'), JSON.stringify(updated));
 
     // Also update auth user if username changed
     const user = tokenStorage.getUser();
@@ -104,15 +78,11 @@ export const profileStorage = {
   },
 
   getBookmarks(): BookmarkRecord[] {
-    const raw = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey('bookmarks'));
     if (!raw) {
       // Default sample bookmarks
-      const defaultBookmarks: BookmarkRecord[] = [
-        { articleId: 1, savedAt: 'Сохранено 2 дня назад', category: 'Дизайн' },
-        { articleId: 2, savedAt: 'Сохранено 5 дней назад', category: 'Культура' },
-        { articleId: 3, savedAt: 'Сохранено 12 мая', category: 'Технологии' },
-      ];
-      localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(defaultBookmarks));
+      const defaultBookmarks: BookmarkRecord[] = [];
+      localStorage.setItem(storageKey('bookmarks'), JSON.stringify(defaultBookmarks));
       return defaultBookmarks;
     }
     try {
@@ -129,7 +99,7 @@ export const profileStorage = {
 
   toggleBookmark(
     articleId: number,
-    category: BookmarkRecord['category'] = 'Дизайн'
+    category?: BookmarkRecord['category']
   ): boolean {
     let bookmarks = this.getBookmarks();
     const exists = bookmarks.some((b) => b.articleId === articleId);
@@ -138,20 +108,20 @@ export const profileStorage = {
     } else {
       bookmarks.unshift({
         articleId,
-        savedAt: 'Только что',
+        savedAt: new Date().toLocaleDateString('ru-RU'),
         category,
       });
     }
-    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+    localStorage.setItem(storageKey('bookmarks'), JSON.stringify(bookmarks));
     notifyProfileChange();
     return !exists;
   },
 
   getLikes(): number[] {
-    const raw = localStorage.getItem(LIKES_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey('likes'));
     if (!raw) {
-      const defaultLikes = [1, 2, 3];
-      localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(defaultLikes));
+      const defaultLikes: number[] = [];
+      localStorage.setItem(storageKey('likes'), JSON.stringify(defaultLikes));
       return defaultLikes;
     }
     try {
@@ -166,23 +136,24 @@ export const profileStorage = {
     return likes.includes(articleId);
   },
 
-  toggleLike(articleId: number): boolean {
-    let likes = this.getLikes();
-    const exists = likes.includes(articleId);
-    if (exists) {
-      likes = likes.filter((id) => id !== articleId);
-    } else {
-      likes.unshift(articleId);
-    }
-    localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
+  getReaction(articleId: number): import('../api/types').ReactionType | null {
+    return read<Record<string, import('../api/types').ReactionType>>('reactions', {})[articleId] ?? null;
+  },
+
+  setReaction(articleId: number, type: import('../api/types').ReactionType | null): void {
+    const reactions = read<Record<string, import('../api/types').ReactionType>>('reactions', {});
+    if (type) reactions[articleId] = type;
+    else delete reactions[articleId];
+    localStorage.setItem(storageKey('reactions'), JSON.stringify(reactions));
+    const likes = Object.entries(reactions).filter(([, reaction]) => reaction === 'LIKE').map(([id]) => Number(id));
+    localStorage.setItem(storageKey('likes'), JSON.stringify(likes));
     notifyProfileChange();
-    return !exists;
   },
 
   getTrackedAuthors(): TrackedAuthor[] {
-    const raw = localStorage.getItem(TRACKED_AUTHORS_KEY);
+    const raw = localStorage.getItem(storageKey('authors'));
     if (!raw) {
-      localStorage.setItem(TRACKED_AUTHORS_KEY, JSON.stringify(DEFAULT_AUTHORS));
+      localStorage.setItem(storageKey('authors'), JSON.stringify(DEFAULT_AUTHORS));
       return DEFAULT_AUTHORS;
     }
     try {
@@ -201,26 +172,25 @@ export const profileStorage = {
     return Boolean(author?.isFollowed);
   },
 
-  toggleFollowAuthor(authorId: number): boolean {
+  toggleFollowAuthor(authorId: number, details?: Partial<TrackedAuthor>): boolean {
     const authors = this.getTrackedAuthors();
     let target = authors.find((a) => a.id === authorId);
     if (!target) {
       // Add author if not yet in tracked list
       target = {
         id: authorId,
-        name: 'Автор',
-        specialty: 'Публикации в Editorial',
-        avatarUrl:
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        name: details?.name || 'Автор',
+        specialty: details?.specialty || '',
+        avatarUrl: DEFAULT_AVATAR,
         isFollowed: true,
       };
       authors.push(target);
-      localStorage.setItem(TRACKED_AUTHORS_KEY, JSON.stringify(authors));
+      localStorage.setItem(storageKey('authors'), JSON.stringify(authors));
       notifyProfileChange();
       return true;
     }
     target.isFollowed = !target.isFollowed;
-    localStorage.setItem(TRACKED_AUTHORS_KEY, JSON.stringify(authors));
+    localStorage.setItem(storageKey('authors'), JSON.stringify(authors));
     notifyProfileChange();
     return target.isFollowed;
   },

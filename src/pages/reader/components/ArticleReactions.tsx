@@ -1,3 +1,4 @@
+import { useArticleReaction } from '@/core/reactions/useArticleReaction';
 import React, { useState, useEffect, useRef } from 'react';
 import { ReactionType } from '@/core/api/types';
 import { reactionsApi } from '@/core/api/reactionsApi';
@@ -27,13 +28,9 @@ export const REACTION_CONFIG: ReactionMeta[] = [
 ];
 
 export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { reaction: userReaction, pending: isLoading, error: mutationError, toggle, canReact } = useArticleReaction(articleId);
   const [reactions, setReactions] = useState<Record<string, number>>({});
-  const [userReaction, setUserReaction] = useState<ReactionType | null>(() => {
-    const saved = localStorage.getItem(`editorial_user_reaction_${articleId}_${user?.accountId}`);
-    return (saved as ReactionType) || null;
-  });
-  const [isLoading, setIsLoading] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
@@ -60,7 +57,7 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
           setReactions(data.reactions);
         }
       } catch (err) {
-        console.warn('Failed to load reactions:', err);
+        if (!cancelled) setFeedbackError((err as Error).message);
       }
     };
 
@@ -71,57 +68,14 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
     return () => {
       cancelled = true;
     };
-  }, [articleId, isAuthenticated]);
+  }, [articleId, isAuthenticated, userReaction]);
 
   const handleToggleReaction = async (type: ReactionType) => {
-    if (!isAuthenticated) {
-      setFeedbackError('Войдите в аккаунт, чтобы оставлять реакции на публикации.');
-      setTimeout(() => setFeedbackError(null), 3000);
-      return;
-    }
-
-    const isCurrentActive = userReaction === type;
-    const previousReaction = userReaction;
-    const previousCounts = { ...reactions };
-
-    // Optimistic UI update
-    const nextCounts = { ...reactions };
-    if (isCurrentActive) {
-      // Removing reaction
-      nextCounts[type] = Math.max(0, (nextCounts[type] || 1) - 1);
-      if (nextCounts[type] === 0) delete nextCounts[type];
-      setUserReaction(null);
-      localStorage.removeItem(`editorial_user_reaction_${articleId}_${user?.accountId}`);
-    } else {
-      // If switching from another reaction
-      if (previousReaction && nextCounts[previousReaction]) {
-        nextCounts[previousReaction] = Math.max(0, nextCounts[previousReaction] - 1);
-        if (nextCounts[previousReaction] === 0) delete nextCounts[previousReaction];
-      }
-      nextCounts[type] = (nextCounts[type] || 0) + 1;
-      setUserReaction(type);
-      localStorage.setItem(`editorial_user_reaction_${articleId}_${user?.accountId}`, type);
-    }
-    setReactions(nextCounts);
+    if (!canReact) return;
+    await toggle(type);
     setIsPickerOpen(false);
-
-    try {
-      setIsLoading(true);
-      if (isCurrentActive) {
-        await reactionsApi.deleteReaction(articleId);
-      } else {
-        await reactionsApi.putReaction(articleId, type);
-      }
-    } catch (err: any) {
-      console.error('Failed to update reaction:', err);
-      // Rollback on error
-      setReactions(previousCounts);
-      setUserReaction(previousReaction);
-      setFeedbackError(err.message || 'Ошибка обновления реакции');
-      setTimeout(() => setFeedbackError(null), 3000);
-    } finally {
-      setIsLoading(false);
-    }
+    try { setReactions((await reactionsApi.getReactions(articleId)).reactions); }
+    catch (err) { setFeedbackError((err as Error).message); }
   };
 
   // Group of reactions to display: active ones + user's current
@@ -143,11 +97,11 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
                 key={cfg.type}
                 type="button"
                 onClick={() => handleToggleReaction(cfg.type)}
-                disabled={isLoading}
+                disabled={isLoading || !canReact}
                 title={`${cfg.label} (${count})`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all select-none ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors select-none ${
                   isActive
-                    ? 'bg-primary/10 border-2 border-primary text-primary shadow-sm scale-105'
+                    ? 'bg-primary/10 border-2 border-primary text-primary scale-105'
                     : 'bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface'
                 }`}
               >
@@ -162,8 +116,9 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
             <button
               type="button"
               onClick={() => setIsPickerOpen(!isPickerOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface hover:bg-surface-container border border-dashed border-outline-variant hover:border-outline text-secondary hover:text-on-surface transition-all"
-              title="Добавить реакцию"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface hover:bg-surface-container border border-dashed border-outline-variant hover:border-outline text-secondary hover:text-on-surface transition-colors"
+              disabled={!canReact || isLoading}
+              title={canReact ? "Добавить реакцию" : "Войдите, чтобы оставить реакцию"}
             >
               <SmilePlus className="w-4 h-4" />
               <span>Реакция</span>
@@ -171,7 +126,7 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
 
             {/* Popover Emoji Picker */}
             {isPickerOpen && (
-              <div className="absolute left-0 bottom-full mb-2 bg-surface rounded-2xl border border-outline-variant shadow-xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 w-64">
+              <div className="absolute left-0 bottom-full mb-2 bg-surface rounded-xl border border-outline-variant shadow-xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 w-64">
                 <div className="text-[11px] font-semibold text-secondary px-2 pb-2 mb-1 border-b border-outline-variant flex items-center justify-between">
                   <span>Выберите реакцию</span>
                   {!isAuthenticated && (
@@ -186,6 +141,7 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
                     <button
                       key={cfg.type}
                       type="button"
+                      disabled={isLoading}
                       onClick={() => handleToggleReaction(cfg.type)}
                       className={`flex flex-col items-center justify-center p-2 rounded-xl hover:bg-surface-container transition-colors ${
                         userReaction === cfg.type ? 'bg-primary/10 border border-primary' : ''
@@ -211,9 +167,9 @@ export const ArticleReactions: React.FC<ArticleReactionsProps> = ({ articleId })
       </div>
 
       {/* Feedback banner */}
-      {feedbackError && (
+      {(feedbackError || mutationError) && (
         <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs">
-          {feedbackError}
+          {mutationError || feedbackError}
         </div>
       )}
     </div>

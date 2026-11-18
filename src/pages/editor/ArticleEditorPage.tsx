@@ -151,7 +151,7 @@ export const ArticleEditorPage: React.FC = () => {
   // Guard for role permissions
   if (!canWrite) {
     return (
-      <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-2xl p-8 text-center space-y-4">
+      <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-xl p-8 text-center space-y-4">
         <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
           <ShieldAlert className="w-6 h-6" />
         </div>
@@ -189,7 +189,7 @@ export const ArticleEditorPage: React.FC = () => {
   }
 
   if (isEditMode && (!article || !articlePermissions(article, user).edit)) {
-    return <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-2xl p-8 text-center space-y-4">
+    return <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-xl p-8 text-center space-y-4">
       <h2 className="text-xl font-bold text-on-surface">Редактирование недоступно</h2>
       <p className="text-sm text-secondary">{error || 'Ваши права или текущий статус статьи не позволяют изменить текст.'}</p>
       <Link to="/?view=my"><Button variant="outline" size="sm">Мои статьи</Button></Link>
@@ -219,9 +219,9 @@ export const ArticleEditorPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('write')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === 'write'
-                ? 'bg-surface text-on-surface shadow-sm'
+                ? 'bg-surface text-on-surface'
                 : 'text-secondary hover:text-on-surface'
             }`}
           >
@@ -231,9 +231,9 @@ export const ArticleEditorPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('preview')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === 'preview'
-                ? 'bg-surface text-on-surface shadow-sm'
+                ? 'bg-surface text-on-surface'
                 : 'text-secondary hover:text-on-surface'
             }`}
           >
@@ -356,7 +356,7 @@ export const ArticleEditorPage: React.FC = () => {
         ) : (
           /* Live Markdown Preview */
           <div className="bg-surface border border-outline/70 rounded-xl p-6 sm:p-8 min-h-[400px]">
-            <h2 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight pb-4 border-b border-outline-variant mb-6">
+            <h2 className="text-2xl sm:text-2xl sm:text-3xl font-bold text-on-surface tracking-tight pb-4 border-b border-outline-variant mb-6">
               {title || 'Заголовок публикации (предпросмотр)'}
             </h2>
             {content.trim() ? (

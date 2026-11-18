@@ -1,208 +1,53 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/AuthContext';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { AccountRole } from '@/core/api/types';
-import {
-  PenSquare,
-  LogOut,
-  User as UserIcon,
-  Database,
-  Radio,
-  ChevronDown,
-  ShieldCheck,
-  FileText,
-  CheckSquare,
-} from 'lucide-react';
+import { Menu, X, LogOut, Settings2 } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { user, isAuthenticated, canWrite, canModerate, logout, isMockMode, setMockMode, setDevRole } =
-    useAuth();
+  const { user, isAuthenticated, canWrite, canModerate, logout, isMockMode, setMockMode, setDevRole } = useAuth();
   const navigate = useNavigate();
-  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
-  const roles: AccountRole[] = ['USER', 'AUTHOR', 'EDITOR', 'ADMIN'];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
+  const links = [
+    { to: '/', label: 'Каталог' },
+    ...(canWrite ? [{ to: '/author', label: 'Мои статьи' }] : []),
+    ...(canModerate ? [{ to: '/editor/moderation', label: 'Модерация' }] : []),
+    ...(user?.role === 'ADMIN' ? [{ to: '/admin', label: 'Управление' }] : []),
+  ];
+  const navigation = links.map(({ to, label }) => (
+    <NavLink key={to} to={to} end onClick={() => setMenuOpen(false)}
+      className={({ isActive }) => `rounded-lg px-3 py-2 text-sm transition-colors ${isActive ? 'bg-surface-container text-on-surface font-semibold' : 'text-secondary hover:text-on-surface hover:bg-surface-container-low'}`}>
+      {label}
+    </NavLink>
+  ));
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-surface/95 backdrop-blur border-b border-outline-variant">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Brand */}
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2.5 tracking-tight font-bold text-xl text-primary group">
-            <span className="w-7 h-7 rounded-lg bg-primary text-on-primary flex items-center justify-center text-sm font-black transition-transform group-hover:scale-105">
-              E
-            </span>
-            <span className="font-extrabold tracking-tight">Editorial</span>
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium text-secondary">
-            <Link
-              to="/"
-              className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container"
-            >
-              Каталог
-            </Link>
-            {canWrite && (
-              <Link
-                to="/author"
-                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
-                title="Авторская панель и управление своими статьями"
-              >
-                <FileText className="w-4 h-4" />
-                Мои статьи
-              </Link>
-            )}
-            {canModerate && (
-              <Link
-                to="/editor/moderation"
-                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
-                title="Очередь модерации статей"
-              >
-                <CheckSquare className="w-4 h-4 text-amber-600" />
-                Модерация
-              </Link>
-            )}
-            {user?.role === 'ADMIN' && (
-              <Link
-                to="/admin"
-                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
-                title="Администраторская панель управления"
-              >
-                <ShieldCheck className="w-4 h-4 text-primary" />
-                Админ-панель
-              </Link>
-            )}
-            {canWrite && (
-              <Link
-                to="/editor"
-                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
-              >
-                <PenSquare className="w-4 h-4" />
-                Написать
-              </Link>
-            )}
-            {isAuthenticated && (
-              <Link
-                to="/profile"
-                className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container"
-              >
-                Профиль
-              </Link>
-            )}
-          </nav>
+    <header className="sticky top-0 z-40 border-b border-outline-variant bg-surface">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-8 min-w-0">
+          <Link to="/" className="text-xl font-bold tracking-tight text-primary">Editorial<span className="text-secondary">.</span></Link>
+          <nav aria-label="Основная навигация" className="hidden lg:flex items-center gap-1">{navigation}</nav>
         </div>
-
-        {/* Right Section */}
-        <div className="flex items-center gap-3">
-          {/* Mock / Live Gateway Switcher */}
-          <button
-            onClick={() => setMockMode(!isMockMode)}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full border border-outline-variant hover:border-outline bg-surface transition-all text-secondary"
-            title={
-              isMockMode
-                ? 'Режим Mock API (автономно). Нажмите для переключения на Gateway :8080'
-                : 'Режим Gateway :8080 (Docker Compose). Нажмите для переключения на Mock API'
-            }
-          >
-            {isMockMode ? (
-              <>
-                <Database className="w-3.5 h-3.5 text-amber-600" />
-                <span className="font-mono text-[11px] text-amber-700 font-medium">Mock API</span>
-              </>
-            ) : (
-              <>
-                <Radio className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-                <span className="font-mono text-[11px] text-emerald-700 font-medium">Gateway :8080</span>
-              </>
-            )}
-          </button>
-
-          {isAuthenticated && user ? (
-            <div className="flex items-center gap-2">
-              {/* Dev Role Switcher Dropdown */}
-              {isMockMode ? <div className="relative">
-                <button
-                  onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-surface-container text-xs font-medium text-secondary border border-outline-variant"
-                  title="Быстрая смена роли для проверки прав доступа"
-                >
-                  <Badge variant="role">{user.role}</Badge>
-                  <ChevronDown className="w-3 h-3 text-secondary" />
-                </button>
-
-                {isRoleMenuOpen && (
-                  <div className="absolute right-0 mt-1.5 w-40 bg-surface rounded-xl border border-outline-variant shadow-lg py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                    <div className="px-3 py-1 text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
-                      Тестовая роль
-                    </div>
-                    {roles.map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => {
-                          setDevRole(r);
-                          setIsRoleMenuOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 text-xs font-medium flex items-center justify-between hover:bg-surface-container transition-colors ${
-                          user.role === r ? 'text-primary font-bold' : 'text-secondary'
-                        }`}
-                      >
-                        {r}
-                        {user.role === r && <span className="text-primary text-[10px]">●</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div> : <Badge variant="role">{user.role}</Badge>}
-
-              {/* User profile link */}
-              <Link
-                to="/profile"
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-container transition-colors text-sm font-medium text-on-surface group"
-                title="Перейти в личный кабинет"
-              >
-                <div className="w-7 h-7 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-xs text-secondary font-semibold overflow-hidden shrink-0">
-                  <UserIcon className="w-3.5 h-3.5 text-secondary group-hover:text-primary transition-colors" />
-                </div>
-                <span className="hidden sm:inline max-w-[120px] truncate group-hover:text-primary transition-colors">
-                  {user.username}
-                </span>
-              </Link>
-
-              {/* Logout button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                title="Выйти из аккаунта"
-                className="text-secondary hover:text-error"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Выйти</span>
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link to="/auth">
-                <Button size="sm" variant="outline" className="text-xs">
-                  <UserIcon className="w-3.5 h-3.5" />
-                  Вход
-                </Button>
-              </Link>
-              <Link to="/auth?tab=register">
-                <Button size="sm" className="text-xs">
-                  Регистрация
-                </Button>
-              </Link>
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          {isAuthenticated && user ? <>
+            <Link to="/profile" className="rounded-lg px-2 py-2 text-sm font-medium text-secondary hover:text-primary max-w-32 truncate" title="Мой профиль">{user.username}</Link>
+            <Button variant="ghost" size="sm" aria-label="Выйти из аккаунта" title="Выйти" onClick={async () => { await logout(); setMenuOpen(false); navigate('/'); }}><LogOut className="w-4 h-4" /></Button>
+          </> : <>
+            <Link to="/auth"><Button variant="ghost" size="sm">Войти</Button></Link>
+            <Link to="/auth?tab=register" className="hidden sm:block"><Button size="sm">Регистрация</Button></Link>
+          </>}
+          {import.meta.env.DEV && <Button size="sm" variant="ghost" aria-label="Инструменты разработки" aria-expanded={devOpen} onClick={() => setDevOpen(!devOpen)}><Settings2 className="w-4 h-4" /></Button>}
+          <Button size="sm" variant="ghost" className="lg:hidden" aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</Button>
         </div>
+        {import.meta.env.DEV && devOpen && <div className="absolute top-full right-4 mt-2 w-64 rounded-xl border border-outline-variant bg-surface p-4 shadow-lg space-y-3">
+          <p className="text-xs font-semibold text-secondary">Инструменты разработки</p>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isMockMode} onChange={(event) => setMockMode(event.target.checked)} />Демо-данные</label>
+          {isMockMode && user && <label className="block text-sm">Тестовая роль<select className="mt-2 w-full rounded-lg border border-outline p-2 bg-surface" value={user.role} onChange={(event) => setDevRole(event.target.value as AccountRole)}>{(['USER', 'AUTHOR', 'EDITOR', 'ADMIN'] as AccountRole[]).map((role) => <option key={role}>{role}</option>)}</select></label>}
+        </div>}
       </div>
+      {menuOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="lg:hidden border-t border-outline-variant px-4 py-3 flex flex-col gap-1">{navigation}{!isAuthenticated && <Link to="/auth?tab=register" onClick={() => setMenuOpen(false)} className="px-3 py-2 text-sm text-secondary">Регистрация</Link>}</nav>}
     </header>
   );
 };

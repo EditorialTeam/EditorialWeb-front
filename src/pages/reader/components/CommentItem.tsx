@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CommentResponse } from '@/core/api/types';
 import { commentsApi } from '@/core/api/commentsApi';
 import { useAuth } from '@/core/auth/AuthContext';
@@ -35,7 +35,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   onRefresh,
   isNested = false,
 }) => {
-  const { user, canWrite } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
@@ -49,9 +49,21 @@ export const CommentItem: React.FC<CommentItemProps> = ({
 
   // Replies state
   const [replies, setReplies] = useState<CommentResponse[]>([]);
-  const [isRepliesLoaded, setIsRepliesLoaded] = useState(false);
   const [areRepliesExpanded, setAreRepliesExpanded] = useState(false);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
+  const [repliesError, setRepliesError] = useState<string | null>(null);
+  useEffect(() => {
+    setEditContent(comment.content);
+    if (!areRepliesExpanded) return;
+    let cancelled = false;
+    setIsLoadingReplies(true);
+    setRepliesError(null);
+    commentsApi.getAllReplies(articleId, comment.id)
+      .then((items) => { if (!cancelled) setReplies(items); })
+      .catch((err: Error) => { if (!cancelled) setRepliesError(err.message); })
+      .finally(() => { if (!cancelled) setIsLoadingReplies(false); });
+    return () => { cancelled = true; };
+  }, [comment, articleId, areRepliesExpanded]);
 
   const isAuthorOfComment = user?.accountId === comment.authorAccountId;
   const isArticleOwner = user?.accountId === articleAuthorId;
@@ -63,10 +75,10 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   // AUTHOR: if owns article
   // EDITOR: if author of comment
   const canDelete =
-    isAdmin || (isArticleOwner && user?.role === 'AUTHOR') || (isEditor && isAuthorOfComment);
+    isAdmin || (isArticleOwner && user?.role === 'AUTHOR') || ((isEditor || user?.role === 'USER') && isAuthorOfComment);
 
   const canEdit = isAuthorOfComment && !comment.deleted;
-  const canReplyAction = canWrite && isPublished && !comment.deleted;
+  const canReplyAction = isAuthenticated && isPublished && !comment.deleted;
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,32 +103,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       setIsDeleteOpen(false);
       onRefresh();
     } catch (err: any) {
-      alert(`Ошибка удаления: ${err.message || err}`);
+      setEditError(err.message || 'Не удалось удалить комментарий');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleToggleReplies = async () => {
-    if (!areRepliesExpanded && !isRepliesLoaded) {
-      setIsLoadingReplies(true);
-      try {
-        const res = await commentsApi.getReplies(articleId, comment.id);
-        const items = Array.isArray(res?.content)
-          ? res.content
-          : Array.isArray(res)
-          ? (res as unknown as CommentResponse[])
-          : [];
-        setReplies(items);
-        setIsRepliesLoaded(true);
-      } catch (err) {
-        console.error('Failed to load replies:', err);
-      } finally {
-        setIsLoadingReplies(false);
-      }
-    }
-    setAreRepliesExpanded(!areRepliesExpanded);
-  };
+  const handleToggleReplies = () => setAreRepliesExpanded((expanded) => !expanded);
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return '';
@@ -168,7 +161,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             {/* Quick Actions */}
             {!comment.deleted && (
               <div className="flex items-center gap-1 opacity-80 group-hover/comment:opacity-100 transition-opacity">
-                {canReplyAction && !isNested && (
+                {canReplyAction && (
                   <button
                     type="button"
                     onClick={() =>
@@ -188,7 +181,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                 {canEdit && !isEditing && (
                   <button
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => { setEditContent(comment.content); setEditError(null); setIsEditing(true); }}
                     className="p-1 text-xs text-secondary hover:text-primary transition-colors rounded hover:bg-surface-container"
                     title="Редактировать комментарий"
                   >
@@ -245,12 +238,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                 comment.deleted ? 'text-secondary/60 italic' : 'text-on-surface'
               }`}
             >
-              {comment.deleted ? 'Этот комментарий был удален :(' : comment.content}
+              {comment.deleted ? 'Комментарий удалён' : comment.content}
             </div>
           )}
 
-          {/* Toggle Replies button (for root comments) */}
-          {!isNested && (
+          {editError && !isEditing && <p role="alert" className="text-xs text-error">{editError}</p>}
+          {repliesError && <p role="alert" className="text-xs text-error">{repliesError}</p>}
+          {/* Replies */}
+          {(
             <div className="pt-1">
               <button
                 type="button"
@@ -274,7 +269,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
           )}
 
           {/* Nested Replies List */}
-          {areRepliesExpanded && !isNested && (
+          {areRepliesExpanded && (
             <div className="mt-3 pl-4 border-l-2 border-outline-variant space-y-3">
               {isLoadingReplies ? (
                 <div className="text-[11px] text-secondary py-2">Загрузка ответов...</div>
@@ -289,10 +284,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                     articleAuthorId={articleAuthorId}
                     isPublished={isPublished}
                     onReply={onReply}
-                    onRefresh={() => {
-                      onRefresh();
-                      handleToggleReplies();
-                    }}
+                    onRefresh={onRefresh}
                     isNested
                   />
                 ))

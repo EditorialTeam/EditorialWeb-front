@@ -14,7 +14,6 @@ export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [acceptTerms, setAcceptTerms] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +78,7 @@ export const AuthPage: React.FC = () => {
         });
 
         // Polling loop checking account active status
-        setActivationStatus('Ожидание подтверждения и активации профиля через сервис сообщений...');
+        setActivationStatus('Подготавливаем профиль...');
         const maxAttempts = 20;
         let isActivated = false;
 
@@ -142,7 +141,7 @@ export const AuthPage: React.FC = () => {
           <span className="w-7 h-7 rounded-lg bg-primary text-on-primary flex items-center justify-center text-sm font-black transition-transform group-hover:scale-105">
             E
           </span>
-          <span className="font-extrabold tracking-tight">Editorial</span>
+          <span className="font-bold tracking-tight">Editorial</span>
         </Link>
         <Link
           to="/"
@@ -154,7 +153,7 @@ export const AuthPage: React.FC = () => {
       </header>
 
       {/* Main Auth Container */}
-      <main className="w-full max-w-[440px] mx-auto my-auto bg-surface rounded-2xl border border-outline/70 shadow-sm p-6 sm:p-8">
+      <main className="w-full max-w-[440px] mx-auto my-auto bg-surface rounded-xl border border-outline/70 p-6 sm:p-8">
         {isRegistrationCompleted ? (
           <div className="text-center py-4 space-y-5 animate-in fade-in duration-300">
             <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
@@ -170,7 +169,7 @@ export const AuthPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold transition-colors shadow-sm"
+                className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold transition-colors"
               >
                 Перейти в каталог статей
               </button>
@@ -195,7 +194,7 @@ export const AuthPage: React.FC = () => {
               </p>
             </div>
             <div className="p-3 bg-surface-container rounded-xl border border-outline/70 text-[11px] text-secondary leading-relaxed">
-              Сервер регистрирует учетную запись и создает ваш профиль через Kafka. Пожалуйста, не закрывайте вкладку.
+              Создаём профиль. Это может занять несколько секунд.
             </div>
           </div>
         ) : (
@@ -208,9 +207,9 @@ export const AuthPage: React.FC = () => {
                   setIsRegister(false);
                   setErrorMessage(null);
                 }}
-                className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-colors ${
                   !isRegister
-                    ? 'bg-surface text-on-surface shadow-sm'
+                    ? 'bg-surface text-on-surface'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
@@ -222,9 +221,9 @@ export const AuthPage: React.FC = () => {
                   setIsRegister(true);
                   setErrorMessage(null);
                 }}
-                className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-colors ${
                   isRegister
-                    ? 'bg-surface text-on-surface shadow-sm'
+                    ? 'bg-surface text-on-surface'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
@@ -239,8 +238,8 @@ export const AuthPage: React.FC = () => {
               </h1>
               <p className="text-sm text-on-surface-variant mt-1.5 leading-relaxed">
                 {isRegister
-                  ? 'Присоединяйтесь к независимому журналу Editorial'
-                  : 'Рады снова видеть вас. Введите данные для входа.'}
+                  ? 'Сохраняйте статьи и следите за авторами.'
+                  : 'Введите почту и пароль.'}
               </p>
             </div>
 
@@ -254,26 +253,8 @@ export const AuthPage: React.FC = () => {
               if (isRegister) setUsername('alex');
             }}
             title="Заполнить демо-данными"
-            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-outline/70 hover:bg-surface-container/60 hover:border-outline text-on-surface text-sm font-medium transition-all group"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-outline/70 hover:bg-surface-container/60 hover:border-outline text-on-surface text-sm font-medium transition-colors group"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                fill="#4285F4"
-              />
-              <path
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                fill="#34A853"
-              />
-              <path
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                fill="#EA4335"
-              />
-            </svg>
             <span className="text-xs">Демо: alex</span>
           </button>
 
@@ -285,11 +266,8 @@ export const AuthPage: React.FC = () => {
               if (isRegister) setUsername('elena');
             }}
             title="Заполнить демо-данными"
-            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-outline/70 hover:bg-surface-container/60 hover:border-outline text-on-surface text-sm font-medium transition-all group"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-outline/70 hover:bg-surface-container/60 hover:border-outline text-on-surface text-sm font-medium transition-colors group"
           >
-            <svg className="w-4 h-4 text-[#229ED9]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
-            </svg>
             <span className="text-xs">Демо: elena</span>
           </button>
         </div>}
@@ -298,7 +276,7 @@ export const AuthPage: React.FC = () => {
         {isMockMode && <div className="relative flex items-center justify-center mb-6">
           <div className="w-full border-t border-outline/70"></div>
           <span className="absolute bg-surface px-3 text-xs text-on-surface-variant font-medium">
-            или через почту
+            вход по почте
           </span>
         </div>}
 
@@ -355,17 +333,7 @@ export const AuthPage: React.FC = () => {
               <label className="text-xs font-semibold text-on-surface" htmlFor="auth-password">
                 Пароль
               </label>
-              {isRegister ? (
-                <span className="text-[11px] text-on-surface-variant/70">Не менее 6 символов</span>
-              ) : isMockMode ? (
-                <button
-                  type="button"
-                  onClick={() => alert('Для демо-режима используйте пароль: password123')}
-                  className="text-xs text-on-surface-variant hover:text-primary transition-colors"
-                >
-                  Забыли пароль?
-                </button>
-              ) : null}
+              {isRegister && <span className="text-xs text-secondary">Не менее 6 символов</span>}
             </div>
             <div className="relative">
               <input
@@ -390,21 +358,7 @@ export const AuthPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Remember me (login) or Terms (register) */}
-          {!isRegister ? (
-            <div className="flex items-center gap-2 pt-0.5">
-              <input
-                id="remember-checkbox"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded text-primary focus:ring-primary border-outline/70 text-black cursor-pointer accent-primary"
-              />
-              <label htmlFor="remember-checkbox" className="text-xs text-on-surface-variant cursor-pointer select-none">
-                Запомнить меня на этом устройстве
-              </label>
-            </div>
-          ) : (
+          {isRegister && (
             <div className="flex items-start gap-2 pt-0.5">
               <input
                 id="terms-checkbox"
@@ -425,7 +379,7 @@ export const AuthPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 px-4 mt-2 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold transition-colors shadow-sm active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 mt-2 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <span>Загрузка...</span>
@@ -457,7 +411,7 @@ export const AuthPage: React.FC = () => {
 
       {/* Clean minimal footer */}
       <footer className="w-full max-w-5xl mx-auto py-4 text-center text-xs text-on-surface-variant/70">
-        © 2026 Editorial. Независимая платформа. Все права защищены.
+        © {new Date().getFullYear()} Editorial
       </footer>
     </div>
   );

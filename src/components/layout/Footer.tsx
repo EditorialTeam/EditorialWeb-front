@@ -1,17 +1,10 @@
 import React from 'react';
 
-export const Footer: React.FC = () => {
-  return (
-    <footer className="w-full border-t border-outline-variant bg-surface mt-auto py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-on-surface-variant/70">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-on-surface">Editorial</span>
-          <span>— Независимый редакционный журнал</span>
-        </div>
-        <div>
-          © 2026 Editorial Platform. Чистая архитектура, типографика и открытый доступ.
-        </div>
-      </div>
-    </footer>
-  );
-};
+export const Footer: React.FC = () => (
+  <footer className="mt-auto border-t border-outline-variant py-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4 text-xs text-secondary">
+      <span className="font-semibold text-on-surface">Editorial</span>
+      <span>© {new Date().getFullYear()} Editorial</span>
+    </div>
+  </footer>
+);

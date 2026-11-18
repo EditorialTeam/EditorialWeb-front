@@ -17,7 +17,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   articleAuthorId,
   isPublished,
 }) => {
-  const { canWrite, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [comments, setComments] = useState<CommentResponse[]>([]);
   const [totalElements, setTotalElements] = useState(0);
@@ -36,14 +36,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const data = await commentsApi.getRootComments(articleId, 0, 50);
-      const items = Array.isArray(data?.content)
-        ? data.content
-        : Array.isArray(data)
-        ? (data as unknown as CommentResponse[])
-        : [];
+      const items = await commentsApi.getAllRoots(articleId);
       setComments(items);
-      setTotalElements(typeof data?.totalElements === 'number' ? data.totalElements : items.length);
+      setTotalElements(items.length);
     } catch (err: any) {
       console.warn('Failed to load comments:', err);
       setError(err.message || 'Не удалось загрузить комментарии');
@@ -63,7 +58,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newContent.trim()) return;
+    if (!isAuthenticated || !isPublished || !newContent.trim() || isSubmitting) return;
 
     if (newContent.length > 5000) {
       setFormError('Комментарий не должен превышать 5000 символов');
@@ -136,13 +131,6 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             Обсуждение откроется после того, как редакция проверит и опубликует эту статью.
           </span>
         </div>
-      ) : !canWrite ? (
-        <div className="p-4 rounded-xl bg-surface-container border border-outline-variant text-xs text-secondary flex items-center gap-2">
-          <Lock className="w-4 h-4 text-secondary shrink-0" />
-          <span>
-            Комментирование доступно авторам, редакторам и администраторам платформы.
-          </span>
-        </div>
       ) : (
         <form id="comment-form" onSubmit={handleSubmit} className="space-y-3">
           {/* Reply indicator banner */}
@@ -161,7 +149,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           )}
 
           <div className="relative">
-            <textarea
+            <textarea aria-label="Текст комментария"
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
               placeholder={
@@ -183,7 +171,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-secondary">
-              Поддерживается Markdown и вежливая дискуссия
+              До 5000 символов
             </span>
             <Button type="submit" size="sm" disabled={isSubmitting || !newContent.trim()}>
               <Send className="w-3.5 h-3.5 mr-1.5" />
