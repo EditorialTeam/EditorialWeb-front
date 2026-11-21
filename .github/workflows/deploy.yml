@@ -46,11 +46,10 @@ jobs:
           script: |
             set -e
 
-            DEPLOY_DIR="/opt/editorial-front"
+            DEPLOY_DIR="$HOME/editorial-front"
 
             echo "=== Ensuring deployment directory exists ==="
-            sudo mkdir -p "$DEPLOY_DIR"
-            sudo chown -R $USER:$USER "$DEPLOY_DIR"
+            mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
             echo "=== Syncing repository from GitHub ==="
