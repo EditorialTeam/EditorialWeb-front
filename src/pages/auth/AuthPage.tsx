@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/auth/AuthContext';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { authApi } from '@/core/api/authApi';
+import { Eye, EyeOff, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, register, isAuthenticated, isMockMode } = useAuth();
+  const { login, isAuthenticated, isMockMode } = useAuth();
 
   const [isRegister, setIsRegister] = useState(searchParams.get('tab') === 'register');
   const [username, setUsername] = useState('');
@@ -17,19 +18,23 @@ export const AuthPage: React.FC = () => {
   const [acceptTerms, setAcceptTerms] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [activationStatus, setActivationStatus] = useState<string>('');
+  const [isRegistrationCompleted, setIsRegistrationCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isRegistrationCompleted && !isActivating) {
       navigate('/');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isRegistrationCompleted, isActivating, navigate]);
 
   useEffect(() => {
     setIsRegister(searchParams.get('tab') === 'register');
     setErrorMessage(null);
     setSuccessMessage(null);
+    setIsRegistrationCompleted(false);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,22 +70,56 @@ export const AuthPage: React.FC = () => {
     setIsLoading(true);
     try {
       if (isRegister) {
-        await register({
+        setIsActivating(true);
+        setActivationStatus('Создание учетной записи...');
+        await authApi.register({
           username: username.trim(),
           email: email.trim(),
           password,
         });
-        setIsRegister(false);
-        setSuccessMessage('Аккаунт создан. Подготовка профиля может занять несколько секунд. После этого войдите с вашим email и паролем.');
-        return;
+
+        // Polling loop checking account active status
+        setActivationStatus('Ожидание подтверждения и активации профиля через сервис сообщений...');
+        const maxAttempts = 20;
+        let isActivated = false;
+
+        for (let i = 1; i <= maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          try {
+            setActivationStatus(`Проверка статуса активации профиля (${i}/${maxAttempts})...`);
+            await login({
+              email: email.trim(),
+              password,
+            });
+            isActivated = true;
+            break;
+          } catch (pollErr: any) {
+            if (pollErr.code === 'ACCOUNT_STILL_PENDING') {
+              continue;
+            }
+            throw pollErr;
+          }
+        }
+
+        setIsActivating(false);
+        if (isActivated) {
+          setIsRegistrationCompleted(true);
+          setSuccessMessage('Аккаунт успешно создан и активирован! Ваш профиль готов к работе.');
+          return;
+        } else {
+          setIsRegister(false);
+          setSuccessMessage('Аккаунт создан, но синхронизация профиля занимает чуть дольше обычного. Пожалуйста, подождите минуту и войдите.');
+          return;
+        }
       } else {
         await login({
           email: email.trim(),
           password,
         });
+        navigate('/');
       }
-      navigate('/');
     } catch (err: any) {
+      setIsActivating(false);
       if (err.code === 'INVALID_CREDENTIALS') {
         setErrorMessage('Неверный адрес электронной почты или пароль');
       } else if (err.code === 'ACCOUNT_STILL_PENDING') {
@@ -116,49 +155,94 @@ export const AuthPage: React.FC = () => {
 
       {/* Main Auth Container */}
       <main className="w-full max-w-[440px] mx-auto my-auto bg-surface rounded-2xl border border-outline/70 shadow-sm p-6 sm:p-8">
-        {/* Toggle Switcher */}
-        <div className="flex rounded-xl bg-surface-container p-1 mb-8">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(false);
-              setErrorMessage(null);
-            }}
-            className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-all ${
-              !isRegister
-                ? 'bg-surface text-on-surface shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            Вход
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(true);
-              setErrorMessage(null);
-            }}
-            className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-all ${
-              isRegister
-                ? 'bg-surface text-on-surface shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            Регистрация
-          </button>
-        </div>
+        {isRegistrationCompleted ? (
+          <div className="text-center py-4 space-y-5 animate-in fade-in duration-300">
+            <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-on-surface">Регистрация завершена!</h2>
+              <p className="text-xs text-on-surface-variant mt-2 max-w-sm mx-auto leading-relaxed">
+                {successMessage}
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold transition-colors shadow-sm"
+              >
+                Перейти в каталог статей
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="w-full py-2.5 px-4 rounded-xl border border-outline/70 hover:bg-surface-container text-on-surface text-sm font-semibold transition-colors"
+              >
+                Перейти в профиль
+              </button>
+            </div>
+          </div>
+        ) : isActivating ? (
+          <div className="text-center py-6 space-y-5 animate-in fade-in duration-200">
+            <div className="w-14 h-14 bg-primary/5 rounded-full flex items-center justify-center mx-auto border border-primary/20">
+              <Loader2 className="w-7 h-7 text-primary animate-spin" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-on-surface">Активация аккаунта</h2>
+              <p className="text-xs text-on-surface-variant mt-2 max-w-xs mx-auto leading-relaxed">
+                {activationStatus}
+              </p>
+            </div>
+            <div className="p-3 bg-surface-container rounded-xl border border-outline/70 text-[11px] text-secondary leading-relaxed">
+              Сервер регистрирует учетную запись и создает ваш профиль через Kafka. Пожалуйста, не закрывайте вкладку.
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Toggle Switcher */}
+            <div className="flex rounded-xl bg-surface-container p-1 mb-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegister(false);
+                  setErrorMessage(null);
+                }}
+                className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  !isRegister
+                    ? 'bg-surface text-on-surface shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Вход
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegister(true);
+                  setErrorMessage(null);
+                }}
+                className={`w-1/2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  isRegister
+                    ? 'bg-surface text-on-surface shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Регистрация
+              </button>
+            </div>
 
-        {/* Title & Description */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight">
-            {isRegister ? 'Создать аккаунт' : 'Вход в аккаунт'}
-          </h1>
-          <p className="text-sm text-on-surface-variant mt-1.5 leading-relaxed">
-            {isRegister
-              ? 'Присоединяйтесь к независимому журналу Editorial'
-              : 'Рады снова видеть вас. Введите данные для входа.'}
-          </p>
-        </div>
+            {/* Title & Description */}
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-on-surface tracking-tight">
+                {isRegister ? 'Создать аккаунт' : 'Вход в аккаунт'}
+              </h1>
+              <p className="text-sm text-on-surface-variant mt-1.5 leading-relaxed">
+                {isRegister
+                  ? 'Присоединяйтесь к независимому журналу Editorial'
+                  : 'Рады снова видеть вас. Введите данные для входа.'}
+              </p>
+            </div>
 
         {/* Quick OAuth Buttons */}
         {isMockMode && <div className="grid grid-cols-2 gap-3 mb-6">
@@ -367,6 +451,8 @@ export const AuthPage: React.FC = () => {
             {isRegister ? 'Войти' : 'Зарегистрироваться'}
           </button>
         </div>
+          </>
+        )}
       </main>
 
       {/* Clean minimal footer */}

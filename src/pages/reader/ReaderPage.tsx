@@ -19,7 +19,12 @@ import {
   RefreshCw,
   Share2,
   Check,
+  Bookmark,
+  Heart,
 } from 'lucide-react';
+import { profileStorage } from '@/core/profile/profileStorage';
+import { ArticleReactions } from './components/ArticleReactions';
+import { CommentsSection } from './components/CommentsSection';
 
 export const ReaderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +37,10 @@ export const ReaderPage: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Bookmark & Like state
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   // Reader tools
   const [fontSizeOffset, setFontSizeOffset] = useState<number>(0); // -2 to +4 px
@@ -46,7 +55,7 @@ export const ReaderPage: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     if (isNaN(articleId)) {
-      setError('Некорректный ID статьи');
+      setError('Статья не найдена');
       setIsLoading(false);
       return;
     }
@@ -56,7 +65,11 @@ export const ReaderPage: React.FC = () => {
       setError(null);
       try {
         const data = await articlesApi.getById(articleId);
-        if (!cancelled) setArticle(data);
+        if (!cancelled) {
+          setArticle(data);
+          setIsBookmarked(profileStorage.isBookmarked(articleId));
+          setIsLiked(profileStorage.isLiked(articleId));
+        }
       } catch (err: any) {
         console.error('Failed to load article:', err);
         if (!cancelled) setError(err.message || 'Статья не найдена');
@@ -66,8 +79,31 @@ export const ReaderPage: React.FC = () => {
     };
 
     loadArticle();
-    return () => { cancelled = true; };
+
+    const handleProfileSync = () => {
+      if (!isNaN(articleId)) {
+        setIsBookmarked(profileStorage.isBookmarked(articleId));
+        setIsLiked(profileStorage.isLiked(articleId));
+      }
+    };
+    window.addEventListener('editorial_profile_updated', handleProfileSync);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('editorial_profile_updated', handleProfileSync);
+    };
   }, [articleId, isMockMode, user?.accountId]);
+
+  const handleToggleBookmark = () => {
+    if (!article) return;
+    const next = profileStorage.toggleBookmark(article.id);
+    setIsBookmarked(next);
+  };
+
+  const handleToggleLike = () => {
+    if (!article) return;
+    const next = profileStorage.toggleLike(article.id);
+    setIsLiked(next);
+  };
 
   const handleDelete = async () => {
     if (!article) return;
@@ -161,6 +197,30 @@ export const ReaderPage: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
+          {/* Bookmark Button */}
+          <Button
+            variant={isBookmarked ? 'primary' : 'outline'}
+            size="sm"
+            onClick={handleToggleBookmark}
+            className="text-xs gap-1.5"
+            title={isBookmarked ? 'Удалить из закладок' : 'Сохранить в закладки'}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+            <span className="hidden sm:inline">{isBookmarked ? 'В закладках' : 'В закладки'}</span>
+          </Button>
+
+          {/* Like Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleLike}
+            className={`text-xs gap-1.5 ${isLiked ? 'text-error border-error/50 bg-error/5' : ''}`}
+            title={isLiked ? 'Убрать отметку «Нравится»' : 'Поставить отметку «Нравится»'}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-error' : ''}`} />
+            <span className="hidden sm:inline">{isLiked ? 'Нравится' : 'Лайк'}</span>
+          </Button>
+
           {/* Font Resizer */}
           <div className="hidden sm:flex items-center gap-1 bg-surface border border-outline-variant rounded-xl p-1 text-xs text-secondary">
             <button
@@ -250,12 +310,18 @@ export const ReaderPage: React.FC = () => {
 
           {/* Byline strip */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-secondary pt-2">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary">
-                A
+            <Link
+              to={`/user/${article.authorAccountId || article.authorId || 1}`}
+              className="flex items-center gap-2 hover:text-primary group transition-colors"
+              title="Перейти на страницу автора"
+            >
+              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary group-hover:scale-105 transition-transform">
+                {(article.authorDisplayName || 'A').charAt(0).toUpperCase()}
               </span>
-              <span className="font-medium text-on-surface">{article.authorDisplayName || `Автор #${article.authorAccountId}`}</span>
-            </div>
+              <span className="font-medium text-on-surface group-hover:underline">
+                {article.authorDisplayName || `Автор #${article.authorAccountId || article.authorId || 1}`}
+              </span>
+            </Link>
             <span>•</span>
             <div className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
@@ -277,6 +343,16 @@ export const ReaderPage: React.FC = () => {
             {article.content}
           </ReactMarkdown>
         </div>
+
+        {/* Article Reactions */}
+        <ArticleReactions articleId={article.id} />
+
+        {/* Comments Section */}
+        <CommentsSection
+          articleId={article.id}
+          articleAuthorId={article.authorAccountId || article.authorId || 0}
+          isPublished={article.status === 'PUBLISHED'}
+        />
 
         {/* Footer info strip */}
         <div className="mt-16 pt-8 border-t border-outline-variant flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-secondary">

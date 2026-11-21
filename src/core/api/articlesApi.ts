@@ -28,6 +28,10 @@ export const articlesApi = {
     return articles;
   },
 
+  async getMy(): Promise<ArticleResponse[]> {
+    return this.getAll('my');
+  },
+
   async getById(id: number): Promise<ArticleResponse> {
     try {
       return parseArticle(await request<unknown>(`/api/articles/${id}`));
@@ -78,5 +82,17 @@ export const articlesApi = {
       method: 'POST',
       body: JSON.stringify({ rejectionReason }),
     });
+  },
+
+  submitForReview(id: number): Promise<void> {
+    return this.transition(id, 'submit');
+  },
+
+  withdrawFromReview(id: number): Promise<void> {
+    return this.transition(id, 'withdraw-from-review');
+  },
+
+  archive(id: number): Promise<void> {
+    return this.transition(id, 'archive');
   },
 };

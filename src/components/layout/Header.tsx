@@ -11,10 +11,13 @@ import {
   Database,
   Radio,
   ChevronDown,
+  ShieldCheck,
+  FileText,
+  CheckSquare,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { user, isAuthenticated, canWrite, logout, isMockMode, setMockMode, setDevRole } =
+  const { user, isAuthenticated, canWrite, canModerate, logout, isMockMode, setMockMode, setDevRole } =
     useAuth();
   const navigate = useNavigate();
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
@@ -38,20 +41,58 @@ export const Header: React.FC = () => {
             <span className="font-extrabold tracking-tight">Editorial</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-secondary">
+          <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium text-secondary">
             <Link
               to="/"
-              className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container"
+              className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container"
             >
               Каталог
             </Link>
             {canWrite && (
               <Link
+                to="/author"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                title="Авторская панель и управление своими статьями"
+              >
+                <FileText className="w-4 h-4" />
+                Мои статьи
+              </Link>
+            )}
+            {canModerate && (
+              <Link
+                to="/editor/moderation"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                title="Очередь модерации статей"
+              >
+                <CheckSquare className="w-4 h-4 text-amber-600" />
+                Модерация
+              </Link>
+            )}
+            {user?.role === 'ADMIN' && (
+              <Link
+                to="/admin"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                title="Администраторская панель управления"
+              >
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                Админ-панель
+              </Link>
+            )}
+            {canWrite && (
+              <Link
                 to="/editor"
-                className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container flex items-center gap-1.5"
+                className="hover:text-on-surface transition-colors py-1 px-2.5 rounded-md hover:bg-surface-container flex items-center gap-1.5"
               >
                 <PenSquare className="w-4 h-4" />
                 Написать
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                to="/profile"
+                className="hover:text-on-surface transition-colors py-1 px-2 rounded-md hover:bg-surface-container"
+              >
+                Профиль
               </Link>
             )}
           </nav>
@@ -119,13 +160,19 @@ export const Header: React.FC = () => {
                 )}
               </div> : <Badge variant="role">{user.role}</Badge>}
 
-              {/* User display */}
-              <div className="hidden sm:flex items-center gap-2 pl-1 text-sm font-medium text-on-surface">
-                <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs text-secondary font-semibold">
-                  {user.username.charAt(0).toUpperCase()}
+              {/* User profile link */}
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-container transition-colors text-sm font-medium text-on-surface group"
+                title="Перейти в личный кабинет"
+              >
+                <div className="w-7 h-7 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-xs text-secondary font-semibold overflow-hidden shrink-0">
+                  <UserIcon className="w-3.5 h-3.5 text-secondary group-hover:text-primary transition-colors" />
+                </div>
+                <span className="hidden sm:inline max-w-[120px] truncate group-hover:text-primary transition-colors">
+                  {user.username}
                 </span>
-                <span className="max-w-[120px] truncate">{user.username}</span>
-              </div>
+              </Link>
 
               {/* Logout button */}
               <Button

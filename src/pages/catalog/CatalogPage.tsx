@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom';
 import { articlesApi } from '@/core/api/articlesApi';
 import { ArticleResponse, ArticleScope } from '@/core/api/types';
+import { profileStorage } from '@/core/profile/profileStorage';
 import { useAuth } from '@/core/auth/AuthContext';
 import { ArticleCard } from './ArticleCard';
 import { Button } from '@/components/ui/Button';
+import { Select, SelectOption } from '@/components/ui/Select';
 import {
   Search,
   PenSquare,
@@ -14,6 +16,11 @@ import {
   BookOpen,
   RefreshCw,
   X,
+  User as UserIcon,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  ArrowDownAZ,
+  Users,
 } from 'lucide-react';
 
 export const CatalogPage: React.FC = () => {
@@ -32,6 +39,7 @@ export const CatalogPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Pagination (prepared for server pagination)
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,6 +80,28 @@ export const CatalogPage: React.FC = () => {
     return ids;
   }, [articles]);
 
+  const authorSelectOptions: SelectOption[] = useMemo(() => {
+    return [
+      { value: 'all', label: 'Все авторы', icon: <Users className="w-3.5 h-3.5" /> },
+      ...authorOptions.map((id, index) => {
+        const tracked = profileStorage.getAuthorById(id);
+        const articleWithAuthor = articles.find((a) => a.authorAccountId === id);
+        const name = tracked?.name || articleWithAuthor?.authorDisplayName || `Автор ${index + 1}`;
+        return {
+          value: String(id),
+          label: name,
+          icon: <UserIcon className="w-3.5 h-3.5" />,
+        };
+      }),
+    ];
+  }, [authorOptions, articles]);
+
+  const sortSelectOptions: SelectOption[] = [
+    { value: 'newest', label: 'Сначала новые', icon: <ArrowDownWideNarrow className="w-3.5 h-3.5" /> },
+    { value: 'oldest', label: 'Сначала старые', icon: <ArrowUpNarrowWide className="w-3.5 h-3.5" /> },
+    { value: 'title', label: 'По названию', icon: <ArrowDownAZ className="w-3.5 h-3.5" /> },
+  ];
+
   // Filter & sort logic
   const filteredArticles = useMemo(() => {
     return articles
@@ -85,7 +115,19 @@ export const CatalogPage: React.FC = () => {
         const matchesAuthor =
           selectedAuthor === 'all' || String(article.authorAccountId) === selectedAuthor;
 
-        return matchesQuery && matchesAuthor;
+        let matchesCategory = true;
+        if (selectedCategory !== 'all') {
+          const text = (article.title + ' ' + article.content).toLowerCase();
+          if (selectedCategory === 'Дизайн') {
+            matchesCategory = text.includes('дизайн') || text.includes('типографик') || text.includes('сетк') || article.id === 1;
+          } else if (selectedCategory === 'Технологии') {
+            matchesCategory = text.includes('технолог') || text.includes('агент') || text.includes('код') || text.includes('микросервис') || article.id === 3;
+          } else if (selectedCategory === 'Культура') {
+            matchesCategory = text.includes('культур') || text.includes('ризограф') || text.includes('зин') || article.id === 2;
+          }
+        }
+
+        return matchesQuery && matchesAuthor && matchesCategory;
       })
       .sort((a, b) => {
         if (sortBy === 'newest') return b.id - a.id;
@@ -93,7 +135,7 @@ export const CatalogPage: React.FC = () => {
         if (sortBy === 'title') return a.title.localeCompare(b.title, 'ru');
         return 0;
       });
-  }, [articles, searchQuery, selectedAuthor, sortBy]);
+  }, [articles, searchQuery, selectedAuthor, selectedCategory, sortBy]);
 
   // Client pagination slice
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / pageSize));
@@ -105,7 +147,7 @@ export const CatalogPage: React.FC = () => {
   // Reset to first page when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedAuthor, sortBy, scope]);
+  }, [searchQuery, selectedAuthor, selectedCategory, sortBy, scope]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -135,29 +177,55 @@ export const CatalogPage: React.FC = () => {
           )}
         </div>
 
+        {/* Scope View Buttons */}
         <div className="mt-6 flex flex-wrap gap-2">
           {([
             ['published', 'Публикации', true],
             ['my', 'Мои статьи', isAuthenticated],
             ['review', 'На проверке', canModerate],
           ] as const).filter(([, , visible]) => visible).map(([view, label]) => (
-            <Button key={view} size="sm" variant={scope === view ? 'primary' : 'outline'}
-              onClick={() => { setSearchParams(view === 'published' ? {} : { view }); setSelectedAuthor('all'); }}>
+            <Button
+              key={view}
+              size="sm"
+              variant={scope === view ? 'primary' : 'outline'}
+              onClick={() => {
+                setSearchParams(view === 'published' ? {} : { view });
+                setSelectedAuthor('all');
+              }}
+            >
               {label}
             </Button>
           ))}
         </div>
 
-        {/* Search & Filter Toolbar */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-12 gap-3">
+        {/* Category Pill Filters (matching profile_design) */}
+        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {['all', 'Дизайн', 'Технологии', 'Культура'].map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                selectedCategory === cat
+                  ? 'bg-primary text-on-primary shadow-sm'
+                  : 'bg-surface hover:bg-surface-container text-secondary hover:text-on-surface border border-outline-variant'
+              }`}
+            >
+              {cat === 'all' ? 'Все темы' : cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search & Custom Select Toolbar */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Search Bar */}
-          <div className="relative sm:col-span-6 lg:col-span-7">
+          <div className="relative sm:col-span-6 lg:col-span-6">
             <Search className="w-4 h-4 text-on-surface-variant/70 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по названию, тексту или ID..."
+              placeholder="Поиск по названию или тексту статьи..."
               className="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             />
             {searchQuery && (
@@ -170,35 +238,55 @@ export const CatalogPage: React.FC = () => {
             )}
           </div>
 
-          {/* Author Filter */}
+          {/* Styled Author Select */}
           <div className="sm:col-span-3 lg:col-span-3">
-            <select
+            <Select
               value={selectedAuthor}
-              onChange={(e) => setSelectedAuthor(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            >
-              <option value="all">Все авторы</option>
-              {authorOptions.map((id) => (
-                <option key={id} value={String(id)}>
-                  {articles.find((article) => article.authorAccountId === id)?.authorDisplayName || `Автор #${id}`}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedAuthor}
+              options={authorSelectOptions}
+              placeholder="Все авторы"
+            />
           </div>
 
-          {/* Sort Selector */}
-          <div className="sm:col-span-3 lg:col-span-2">
-            <select
+          {/* Styled Sort Select */}
+          <div className="sm:col-span-3 lg:col-span-3">
+            <Select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full px-3 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-            >
-              <option value="newest">Сначала новые</option>
-              <option value="oldest">Сначала старые</option>
-              <option value="title">По названию</option>
-            </select>
+              onChange={(val) => setSortBy(val as any)}
+              options={sortSelectOptions}
+              placeholder="Сортировка"
+            />
           </div>
         </div>
+
+        {/* Selected Author Quick View Bar */}
+        {selectedAuthor !== 'all' && (
+          <div className="mt-3.5 flex items-center justify-between p-3 bg-surface-container-low border border-outline-variant rounded-xl text-xs">
+            <div className="flex items-center gap-2">
+              <UserIcon className="w-4 h-4 text-primary" />
+              <span className="text-secondary">Публикации автора:</span>
+              <span className="font-bold text-on-surface">
+                {authorSelectOptions.find((o) => o.value === selectedAuthor)?.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                to={`/user/${selectedAuthor}`}
+                className="font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
+              >
+                <span>Смотреть страницу автора</span>
+                <span>→</span>
+              </Link>
+              <button
+                onClick={() => setSelectedAuthor('all')}
+                className="text-secondary hover:text-error transition-colors p-0.5 rounded"
+                title="Сбросить фильтр"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -240,17 +328,18 @@ export const CatalogPage: React.FC = () => {
           </div>
           <h3 className="text-lg font-bold text-on-surface">Статьи не найдены</h3>
           <p className="text-sm text-secondary leading-relaxed">
-            {searchQuery || selectedAuthor !== 'all'
+            {searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all'
               ? 'По заданным параметрам поиска ничего не нашлось. Попробуйте сбросить фильтры.'
               : 'В редакции пока нет опубликованных статей.'}
           </p>
-          {(searchQuery || selectedAuthor !== 'all') && (
+          {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all') && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setSearchQuery('');
                 setSelectedAuthor('all');
+                setSelectedCategory('all');
               }}
             >
               Сбросить фильтры

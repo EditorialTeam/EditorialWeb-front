@@ -116,6 +116,85 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
   if (actionMatch && method === 'POST') {
     return await mockApi.changeStatus(Number(actionMatch[1]), actionMatch[2], currentUser, url.searchParams.get('decision')) as T;
   }
+  if (endpoint === '/api/users/me' && method === 'GET') {
+    return (await mockApi.getMe(userId)) as unknown as T;
+  }
+  if (endpoint === '/api/users/me' && method === 'PATCH') {
+    return (await mockApi.updateMe(userId, body)) as unknown as T;
+  }
+  if (endpoint.startsWith('/api/users/') && method === 'GET') {
+    const id = parseInt(endpoint.replace('/api/users/', ''), 10);
+    return (await mockApi.getUserProfile(id)) as unknown as T;
+  }
+  // Mock comments
+  if (endpoint.includes('/comments') && endpoint.includes('/replies') && method === 'GET') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/comments\/(\d+)\/replies/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      const rootCommentId = parseInt(match[2], 10);
+      return (await mockApi.getReplies(articleId, rootCommentId)) as unknown as T;
+    }
+  }
+
+  if (endpoint.includes('/comments') && method === 'GET') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/comments/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      return (await mockApi.getRootComments(articleId)) as unknown as T;
+    }
+  }
+
+  if (endpoint.includes('/comments') && method === 'POST') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/comments/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      return (await mockApi.createComment(articleId, body, userId)) as unknown as T;
+    }
+  }
+
+  if (endpoint.includes('/comments/') && method === 'PATCH') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/comments\/(\d+)/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      const commentId = parseInt(match[2], 10);
+      return (await mockApi.editComment(articleId, commentId, body, userId)) as unknown as T;
+    }
+  }
+
+  if (endpoint.includes('/comments/') && method === 'DELETE') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/comments\/(\d+)/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      const commentId = parseInt(match[2], 10);
+      return (await mockApi.deleteComment(articleId, commentId, userId)) as unknown as T;
+    }
+  }
+
+  // Mock reactions
+  if (endpoint.includes('/reactions') && method === 'GET') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/reactions/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      return (await mockApi.getReactions(articleId)) as unknown as T;
+    }
+  }
+
+  if (endpoint.includes('/reactions') && method === 'PUT') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/reactions/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      return (await mockApi.putReaction(articleId, body.reactionType, userId)) as unknown as T;
+    }
+  }
+
+  if (endpoint.includes('/reactions') && method === 'DELETE') {
+    const match = endpoint.match(/\/api\/articles\/(\d+)\/reactions/);
+    if (match) {
+      const articleId = parseInt(match[1], 10);
+      return (await mockApi.deleteReaction(articleId, userId)) as unknown as T;
+    }
+  }
+
   if (endpoint.startsWith('/api/articles/') && method === 'GET') {
     const id = parseInt(endpoint.replace('/api/articles/', ''), 10);
     return (await mockApi.getArticleById(id)) as unknown as T;
@@ -134,6 +213,25 @@ async function handleMockRequest<T>(endpoint: string, options: RequestInit): Pro
   if (endpoint.startsWith('/api/articles/') && method === 'DELETE') {
     const id = parseInt(endpoint.replace('/api/articles/', ''), 10);
     return (await mockApi.deleteArticle(id)) as unknown as T;
+  }
+
+  // Mock admin
+  if (endpoint.startsWith('/api/admin/accounts') && method === 'GET') {
+    return (await mockApi.getAccounts()) as unknown as T;
+  }
+
+  if (endpoint.startsWith('/api/admin/accounts/') && method === 'PATCH') {
+    const accountId = parseInt(endpoint.replace('/api/admin/accounts/', ''), 10);
+    return (await mockApi.patchAccount(accountId, body)) as unknown as T;
+  }
+
+  if (endpoint.startsWith('/api/admin/users') && method === 'GET') {
+    return (await mockApi.getProfiles()) as unknown as T;
+  }
+
+  if (endpoint.startsWith('/api/admin/users/') && method === 'PATCH') {
+    const accountId = parseInt(endpoint.replace('/api/admin/users/', ''), 10);
+    return (await mockApi.patchProfile(accountId, body)) as unknown as T;
   }
 
   throw new Error(`Mock endpoint not supported: ${method} ${endpoint}`);
