@@ -36,3 +36,28 @@ test('rejects unexpected payloads before they reach the catalog', () => {
     assert.throws(() => parseArticleList(value), /неверный формат ответа API/);
   }
 });
+
+
+test('reads current authorInfo DTO, including an unavailable profile', () => {
+  const base = { articleId: 7, title: 'Статья', content: 'Текст', status: 'PUBLISHED' };
+  const [article] = parseArticleList([{ ...base, authorInfo: { '42': { displayName: 'Автор', avatarObjectKey: 'avatars/42/a.png' } } }]);
+  assert.equal(article.authorAccountId, 42);
+  assert.equal(article.authorDisplayName, 'Автор');
+  assert.equal(article.authorAvatarObjectKey, 'avatars/42/a.png');
+  const [missing] = parseArticleList([{ ...base, authorInfo: { '42': null } }]);
+  assert.equal(missing.authorAccountId, 42);
+  assert.equal(missing.authorDisplayName, null);
+  for (const authorInfo of [{}, { nope: null }, { '1': null, '2': null }]) {
+    assert.throws(() => parseArticleList([{ ...base, authorInfo }]), /неверный формат/);
+  }
+});
+
+
+test('preserves coverObjectKey in current read DTO and entity responses', () => {
+  const read = { articleId: 8, title: 'Cover', content: 'Text', authorInfo: { '2': null }, coverObjectKey: 'covers/8/a b.png' };
+  const [withCover] = parseArticleList([read]);
+  assert.equal(withCover.coverObjectKey, 'covers/8/a b.png');
+  assert.equal(parseArticleList([{ ...read, coverObjectKey: null }])[0].coverObjectKey, null);
+  assert.equal(parseArticleList([{ ...article, coverObjectKey: 'covers/1/a.png' }])[0].coverObjectKey, 'covers/1/a.png');
+  assert.throws(() => parseArticleList([{ ...read, coverObjectKey: 42 }]), /неверный формат/);
+});

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AccountRole, AuthUser, LoginRequest, RegisterAccountRequest } from '../api/types';
+import { AuthUser, LoginRequest, RegisterAccountRequest } from '../api/types';
 import { authApi } from '../api/authApi';
 import { refreshSession } from '../api/client';
 import { tokenStorage } from './tokenStorage';
@@ -11,9 +11,6 @@ interface AuthContextType {
   isLoading: boolean;
   canWrite: boolean;
   canModerate: boolean;
-  isMockMode: boolean;
-  setMockMode: (enabled: boolean) => void;
-  setDevRole: (role: AccountRole) => void;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterAccountRequest) => Promise<void>;
   logout: () => Promise<void>;
@@ -24,17 +21,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMockMode, setIsMockModeState] = useState<boolean>(tokenStorage.isMockMode());
 
   useEffect(() => {
     let cancelled = false;
     const initialize = async () => {
+      tokenStorage.clearLegacyDemoSession();
       const storedUser = tokenStorage.getUser();
       try {
-        if (tokenStorage.isMockMode() && storedUser) {
-          if (!cancelled) setUser(storedUser);
-          return;
-        }
         let accessToken = tokenStorage.getAccessToken();
         if ((!accessToken || isTokenExpired(accessToken)) && tokenStorage.getRefreshToken()) {
           await refreshSession();
@@ -116,31 +109,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const setMockMode = (enabled: boolean) => {
-    tokenStorage.clear();
-    setUser(null);
-    tokenStorage.setMockMode(enabled);
-    setIsMockModeState(enabled);
-  };
-
-  const setDevRole = (newRole: AccountRole) => {
-    if (!isMockMode) return;
-    if (!user) {
-      const dummyUser: AuthUser = {
-        accountId: 99,
-        username: 'dev_user',
-        email: 'dev@editorial.local',
-        role: newRole,
-      };
-      tokenStorage.setUser(dummyUser);
-      setUser(dummyUser);
-      return;
-    }
-    const updated = { ...user, role: newRole };
-    tokenStorage.setUser(updated);
-    setUser(updated);
-  };
-
   const canWrite = Boolean(
     user && (user.role === 'AUTHOR' || user.role === 'EDITOR' || user.role === 'ADMIN')
   );
@@ -156,9 +124,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         canWrite,
         canModerate,
-        isMockMode,
-        setMockMode,
-        setDevRole,
         login,
         register,
         logout,

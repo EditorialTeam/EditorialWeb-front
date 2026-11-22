@@ -1,8 +1,8 @@
+import { articleTimestamp } from '@/core/utils/articleDate';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { articlesApi } from '@/core/api/articlesApi';
 import { ArticleResponse, ArticleScope } from '@/core/api/types';
-import { profileStorage } from '@/core/profile/profileStorage';
 import { useAuth } from '@/core/auth/AuthContext';
 import { ArticleCard } from './ArticleCard';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,6 @@ import { Select, SelectOption } from '@/components/ui/Select';
 import {
   Search,
   PenSquare,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -24,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const CatalogPage: React.FC = () => {
-  const { canWrite, canModerate, isMockMode, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { canWrite, canModerate, isAuthenticated, isLoading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedView = searchParams.get('view');
   const scope: ArticleScope = requestedView === 'my' && isAuthenticated ? 'my'
@@ -39,7 +38,6 @@ export const CatalogPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Pagination (prepared for server pagination)
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,7 +46,7 @@ export const CatalogPage: React.FC = () => {
   const loadArticles = useCallback(async () => {
     const currentRequest = ++requestId.current;
     if (authLoading) return;
-    if (!isAuthenticated && !isMockMode) {
+    if (!isAuthenticated) {
       setArticles([]);
       setIsLoading(false);
       return;
@@ -65,7 +63,7 @@ export const CatalogPage: React.FC = () => {
     } finally {
       if (currentRequest === requestId.current) setIsLoading(false);
     }
-  }, [scope, isAuthenticated, isMockMode, authLoading]);
+  }, [scope, isAuthenticated, authLoading]);
 
   useEffect(() => {
     loadArticles();
@@ -83,10 +81,9 @@ export const CatalogPage: React.FC = () => {
   const authorSelectOptions: SelectOption[] = useMemo(() => {
     return [
       { value: 'all', label: 'Все авторы', icon: <Users className="w-3.5 h-3.5" /> },
-      ...authorOptions.map((id, index) => {
-        const tracked = profileStorage.getAuthorById(id);
+      ...authorOptions.map((id) => {
         const articleWithAuthor = articles.find((a) => a.authorAccountId === id);
-        const name = tracked?.name || articleWithAuthor?.authorDisplayName || `Автор ${index + 1}`;
+        const name = articleWithAuthor?.authorDisplayName || `Автор №${id}`;
         return {
           value: String(id),
           label: name,
@@ -115,27 +112,15 @@ export const CatalogPage: React.FC = () => {
         const matchesAuthor =
           selectedAuthor === 'all' || String(article.authorAccountId) === selectedAuthor;
 
-        let matchesCategory = true;
-        if (selectedCategory !== 'all') {
-          const text = (article.title + ' ' + article.content).toLowerCase();
-          if (selectedCategory === 'Дизайн') {
-            matchesCategory = text.includes('дизайн') || text.includes('типографик') || text.includes('сетк') || article.id === 1;
-          } else if (selectedCategory === 'Технологии') {
-            matchesCategory = text.includes('технолог') || text.includes('агент') || text.includes('код') || text.includes('микросервис') || article.id === 3;
-          } else if (selectedCategory === 'Культура') {
-            matchesCategory = text.includes('культур') || text.includes('ризограф') || text.includes('зин') || article.id === 2;
-          }
-        }
-
-        return matchesQuery && matchesAuthor && matchesCategory;
+        return matchesQuery && matchesAuthor;
       })
       .sort((a, b) => {
-        if (sortBy === 'newest') return b.id - a.id;
-        if (sortBy === 'oldest') return a.id - b.id;
+        if (sortBy === 'newest') return (articleTimestamp(b) ?? 0) - (articleTimestamp(a) ?? 0) || b.id - a.id;
+        if (sortBy === 'oldest') return (articleTimestamp(a) ?? 0) - (articleTimestamp(b) ?? 0) || a.id - b.id;
         if (sortBy === 'title') return a.title.localeCompare(b.title, 'ru');
         return 0;
       });
-  }, [articles, searchQuery, selectedAuthor, selectedCategory, sortBy]);
+  }, [articles, searchQuery, selectedAuthor, sortBy]);
 
   // Client pagination slice
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / pageSize));
@@ -147,7 +132,7 @@ export const CatalogPage: React.FC = () => {
   // Reset to first page when search/filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedAuthor, selectedCategory, sortBy, scope]);
+  }, [searchQuery, selectedAuthor, sortBy, scope]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -155,16 +140,13 @@ export const CatalogPage: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Top Banner / Hero */}
-      <div className="border-b border-outline-variant pb-8 pt-2">
+      {/* Publication masthead and filters */}
+      <div className="feed-heading">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-on-surface tracking-tight">
-              Каталог публикаций
+            <h1 className="feed-heading__title">
+              {scope === 'published' ? 'Лента' : scope === 'my' ? 'Мои статьи' : 'На проверке'}
             </h1>
-            <p className="text-secondary text-sm sm:text-base mt-2 max-w-xl leading-relaxed">
-              Независимые материалы, архитектурные обзоры и статьи. Читайте или делитесь своими мыслями.
-            </p>
           </div>
 
           {canWrite && (
@@ -178,40 +160,23 @@ export const CatalogPage: React.FC = () => {
         </div>
 
         {/* Scope View Buttons */}
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="feed-tabs" role="navigation" aria-label="Разделы публикаций">
           {([
             ['published', 'Публикации', true],
             ['my', 'Мои статьи', isAuthenticated],
             ['review', 'На проверке', canModerate],
           ] as const).filter(([, , visible]) => visible).map(([view, label]) => (
-            <Button
+            <button
               key={view}
-              size="sm"
-              variant={scope === view ? 'primary' : 'outline'}
+              type="button"
+              aria-current={scope === view ? 'page' : undefined}
+              className={`feed-tabs__item${scope === view ? ' feed-tabs__item--active' : ''}`}
               onClick={() => {
                 setSearchParams(view === 'published' ? {} : { view });
                 setSelectedAuthor('all');
               }}
             >
               {label}
-            </Button>
-          ))}
-        </div>
-
-        {/* Category Pill Filters (matching profile_design) */}
-        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['all', 'Дизайн', 'Технологии', 'Культура'].map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'bg-surface hover:bg-surface-container text-secondary hover:text-on-surface border border-outline-variant'
-              }`}
-            >
-              {cat === 'all' ? 'Все темы' : cat}
             </button>
           ))}
         </div>
@@ -225,12 +190,13 @@ export const CatalogPage: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по названию или тексту статьи..."
+              aria-label="Поиск статей" placeholder="Поиск статей"
               className="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
+                aria-label="Очистить поиск"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
               >
                 <X className="w-4 h-4" />
@@ -290,31 +256,18 @@ export const CatalogPage: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      {!authLoading && !isAuthenticated && !isMockMode ? (
-        <div className="bg-surface border border-outline-variant rounded-2xl p-8 text-center max-w-md mx-auto my-12 space-y-4">
+      {!authLoading && !isAuthenticated ? (
+        <div className="bg-surface border border-outline-variant rounded-xl p-8 text-center max-w-md mx-auto my-12 space-y-4">
           <h2 className="text-xl font-bold text-on-surface">Войдите, чтобы читать статьи</h2>
           <p className="text-sm text-secondary">Публикации Editorial доступны пользователям с аккаунтом.</p>
           <Link to="/auth" className="inline-block"><Button size="sm">Войти в аккаунт</Button></Link>
         </div>
       ) : isLoading || authLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="bg-surface border border-outline-variant rounded-2xl p-6 h-64 animate-pulse flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="h-4 bg-surface-container rounded w-1/3" />
-                <div className="h-6 bg-surface-container rounded w-3/4" />
-                <div className="h-4 bg-surface-container rounded w-full" />
-                <div className="h-4 bg-surface-container rounded w-2/3" />
-              </div>
-              <div className="h-4 bg-surface-container rounded w-1/4 pt-4 border-t border-outline-variant" />
-            </div>
-          ))}
+        <div aria-busy="true" aria-label="Загрузка публикаций" className="divide-y divide-outline-variant">
+          {[1, 2, 3].map(i => <div key={i} className="py-7 animate-pulse space-y-3"><div className="h-3 bg-surface-container w-32" /><div className="h-7 bg-surface-container w-3/4" /><div className="h-4 bg-surface-container w-1/2" /></div>)}
         </div>
       ) : error ? (
-        <div className="bg-surface border border-error/30 rounded-2xl p-8 text-center max-w-md mx-auto my-12">
+        <div className="bg-surface border border-error/30 rounded-xl p-8 text-center max-w-md mx-auto my-12">
           <p className="text-sm text-error font-medium mb-4">{error}</p>
           <Button variant="outline" size="sm" onClick={loadArticles} className="gap-2">
             <RefreshCw className="w-4 h-4" />
@@ -322,24 +275,23 @@ export const CatalogPage: React.FC = () => {
           </Button>
         </div>
       ) : filteredArticles.length === 0 ? (
-        <div className="bg-surface border border-outline-variant rounded-2xl p-12 text-center max-w-lg mx-auto my-12 space-y-4">
+        <div className="bg-surface border border-outline-variant rounded-xl p-12 text-center max-w-lg mx-auto my-12 space-y-4">
           <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mx-auto text-secondary">
             <BookOpen className="w-6 h-6" />
           </div>
           <h3 className="text-lg font-bold text-on-surface">Статьи не найдены</h3>
           <p className="text-sm text-secondary leading-relaxed">
-            {searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all'
+            {searchQuery || selectedAuthor !== 'all'
               ? 'По заданным параметрам поиска ничего не нашлось. Попробуйте сбросить фильтры.'
               : 'В редакции пока нет опубликованных статей.'}
           </p>
-          {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all') && (
+          {(searchQuery || selectedAuthor !== 'all') && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setSearchQuery('');
                 setSelectedAuthor('all');
-                setSelectedCategory('all');
               }}
             >
               Сбросить фильтры
@@ -348,21 +300,17 @@ export const CatalogPage: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Active summary */}
-          <div className="flex items-center justify-between text-xs text-secondary font-medium">
-            <span>
-              Найдено статей: <strong className="text-on-surface">{filteredArticles.length}</strong>
-            </span>
-            <span className="flex items-center gap-1">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Сортировка: {sortBy === 'newest' ? 'новые' : sortBy === 'oldest' ? 'старые' : 'по алфавиту'}
-            </span>
+          <div className="feed-summary">
+            <span>{searchQuery || selectedAuthor !== 'all' ? 'Результаты поиска' : scope === 'published' ? 'Публикации' : 'Статьи'}</span>
+            <span>{filteredArticles.length}</span>
           </div>
-
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
+          <div className="publication-feed" aria-label="Лента публикаций">
+            {paginatedArticles.map((article, index) => (
+              <ArticleCard
+                key={article.id}
+                article={article}
+                variant={scope === 'published' && currentPage === 1 && sortBy === 'newest' && !searchQuery.trim() && selectedAuthor === 'all' && index === 0 ? 'lead' : 'feed'}
+              />
             ))}
           </div>
 
@@ -391,6 +339,8 @@ export const CatalogPage: React.FC = () => {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
+                      aria-label={`Страница ${page}`}
+                      aria-current={currentPage === page ? 'page' : undefined}
                       className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
                         currentPage === page
                           ? 'bg-primary text-on-primary'

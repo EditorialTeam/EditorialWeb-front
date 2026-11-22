@@ -9,7 +9,7 @@ import {
 } from './types';
 
 export const articlesApi = {
-  async getAll(scope: ArticleScope = 'published'): Promise<ArticleResponse[]> {
+  async getAll(scope: ArticleScope = 'published', authorAccountId?: number): Promise<ArticleResponse[]> {
     const endpoint = scope === 'my' ? '/api/articles/my'
       : scope === 'review' ? '/api/editor/articles' : '/api/articles';
     const articles: ArticleResponse[] = [];
@@ -20,6 +20,7 @@ export const articlesApi = {
     do {
       const params = new URLSearchParams({ page: String(page), size: '100' });
       if (scope === 'published') params.set('status', 'PUBLISHED');
+      if (scope === 'published' && authorAccountId !== undefined) params.set('authorAccountId', String(authorAccountId));
       const result = parseArticlePage(await request<unknown>(`${endpoint}?${params}`));
       articles.push(...result.content);
       totalPages = result.totalPages;

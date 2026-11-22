@@ -1,3 +1,7 @@
+import { ArticleCover } from '@/components/media/ArticleCover';
+import { articleDateLabel, articleTimestamp } from '@/core/utils/articleDate';
+import { Avatar } from '@/components/media/Avatar';
+import { ArticleMedia } from '@/components/media/ArticleMedia';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -20,7 +24,6 @@ import {
   Share2,
   Check,
   Bookmark,
-  Heart,
 } from 'lucide-react';
 import { profileStorage } from '@/core/profile/profileStorage';
 import { ArticleReactions } from './components/ArticleReactions';
@@ -29,7 +32,7 @@ import { CommentsSection } from './components/CommentsSection';
 export const ReaderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isMockMode } = useAuth();
+  const { user } = useAuth();
 
   const [article, setArticle] = useState<ArticleResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,7 +43,6 @@ export const ReaderPage: React.FC = () => {
 
   // Bookmark & Like state
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
 
   // Reader tools
   const [fontSizeOffset, setFontSizeOffset] = useState<number>(0); // -2 to +4 px
@@ -68,7 +70,7 @@ export const ReaderPage: React.FC = () => {
         if (!cancelled) {
           setArticle(data);
           setIsBookmarked(profileStorage.isBookmarked(articleId));
-          setIsLiked(profileStorage.isLiked(articleId));
+
         }
       } catch (err: any) {
         console.error('Failed to load article:', err);
@@ -83,7 +85,7 @@ export const ReaderPage: React.FC = () => {
     const handleProfileSync = () => {
       if (!isNaN(articleId)) {
         setIsBookmarked(profileStorage.isBookmarked(articleId));
-        setIsLiked(profileStorage.isLiked(articleId));
+
       }
     };
     window.addEventListener('editorial_profile_updated', handleProfileSync);
@@ -91,18 +93,12 @@ export const ReaderPage: React.FC = () => {
       cancelled = true;
       window.removeEventListener('editorial_profile_updated', handleProfileSync);
     };
-  }, [articleId, isMockMode, user?.accountId]);
+  }, [articleId, user?.accountId]);
 
   const handleToggleBookmark = () => {
     if (!article) return;
-    const next = profileStorage.toggleBookmark(article.id);
+    const next = profileStorage.toggleBookmark(article.id, article.title);
     setIsBookmarked(next);
-  };
-
-  const handleToggleLike = () => {
-    if (!article) return;
-    const next = profileStorage.toggleLike(article.id);
-    setIsLiked(next);
   };
 
   const handleDelete = async () => {
@@ -113,7 +109,7 @@ export const ReaderPage: React.FC = () => {
       setIsDeleteOpen(false);
       navigate('/');
     } catch (err: any) {
-      alert(`Ошибка при удалении статьи: ${err.message || err}`);
+      setActionError(err.message || 'Не удалось удалить статью'); setIsDeleteOpen(false);
     } finally {
       setIsDeleting(false);
     }
@@ -188,7 +184,7 @@ export const ReaderPage: React.FC = () => {
   return (
     <div className="animate-in fade-in duration-200">
       {/* Top Navigation Bar */}
-      <div className="max-w-[720px] mx-auto mb-8 flex items-center justify-between gap-4">
+      <div className="max-w-[720px] mx-auto mb-8 flex flex-wrap items-center justify-between gap-3">
         <Link to="/">
           <Button variant="ghost" size="sm" className="gap-1.5 text-secondary hover:text-on-surface -ml-2">
             <ArrowLeft className="w-4 h-4" />
@@ -196,7 +192,7 @@ export const ReaderPage: React.FC = () => {
           </Button>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Bookmark Button */}
           <Button
             variant={isBookmarked ? 'primary' : 'outline'}
@@ -207,18 +203,6 @@ export const ReaderPage: React.FC = () => {
           >
             <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
             <span className="hidden sm:inline">{isBookmarked ? 'В закладках' : 'В закладки'}</span>
-          </Button>
-
-          {/* Like Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleToggleLike}
-            className={`text-xs gap-1.5 ${isLiked ? 'text-error border-error/50 bg-error/5' : ''}`}
-            title={isLiked ? 'Убрать отметку «Нравится»' : 'Поставить отметку «Нравится»'}
-          >
-            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-error' : ''}`} />
-            <span className="hidden sm:inline">{isLiked ? 'Нравится' : 'Лайк'}</span>
           </Button>
 
           {/* Font Resizer */}
@@ -298,9 +282,6 @@ export const ReaderPage: React.FC = () => {
         {/* Publication Meta Header */}
         <div className="pb-8 border-b border-outline-variant space-y-4">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="font-mono text-xs">
-              Публикация #{article.id}
-            </Badge>
             {article.status && <Badge variant="outline">{articleStatusLabels[article.status]}</Badge>}
           </div>
 
@@ -315,9 +296,7 @@ export const ReaderPage: React.FC = () => {
               className="flex items-center gap-2 hover:text-primary group transition-colors"
               title="Перейти на страницу автора"
             >
-              <span className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-primary group-hover:scale-105 transition-transform">
-                {(article.authorDisplayName || 'A').charAt(0).toUpperCase()}
-              </span>
+              <Avatar objectKey={article.authorAvatarObjectKey} name={article.authorDisplayName || 'Автор'} className="w-7 h-7" />
               <span className="font-medium text-on-surface group-hover:underline">
                 {article.authorDisplayName || `Автор #${article.authorAccountId || article.authorId || 1}`}
               </span>
@@ -327,13 +306,16 @@ export const ReaderPage: React.FC = () => {
               <Clock className="w-4 h-4" />
               <span>{readingStats.text}</span>
             </div>
-            <span>•</span>
-            <span className="font-mono text-xs text-secondary/70">
-              {readingStats.wordCount} слов
-            </span>
+            {articleTimestamp(article) !== null && <time dateTime={new Date(articleTimestamp(article)!).toISOString()} className="text-sm text-secondary">{articleDateLabel(article)}</time>}
           </div>
         </div>
 
+        <ArticleCover
+          objectKey={article.coverObjectKey}
+          alt={`Обложка статьи «${article.title}»`}
+          loading="eager"
+          className="reader-cover"
+        />
         {/* Article Body with Markdown Rendering */}
         <div
           className="markdown-body pt-8"
@@ -344,6 +326,7 @@ export const ReaderPage: React.FC = () => {
           </ReactMarkdown>
         </div>
 
+        <ArticleMedia key={article.id} articleId={article.id} />
         {/* Article Reactions */}
         <ArticleReactions articleId={article.id} />
 
@@ -358,7 +341,7 @@ export const ReaderPage: React.FC = () => {
         <div className="mt-16 pt-8 border-t border-outline-variant flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-secondary">
           <div className="flex items-center gap-2">
             <UserIcon className="w-4 h-4 text-secondary" />
-            <span>{article.status === 'PUBLISHED' ? 'Материал проверен редакцией Editorial' : 'Материал ещё не опубликован'}</span>
+            <span>{article.status === 'PUBLISHED' ? 'Опубликовано' : 'Материал ещё не опубликован'}</span>
           </div>
           <Link to="/" className="text-primary hover:underline font-semibold">
             ← Вернуться ко всем статьям

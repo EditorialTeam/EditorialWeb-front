@@ -24,7 +24,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isLoading = false,
 }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="sm">
+    <Modal isOpen={isOpen} onClose={() => { if (!isLoading) onClose(); }} title={title} maxWidth="sm">
       <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">{description}</p>
       <div className="flex items-center justify-end gap-3">
         <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>

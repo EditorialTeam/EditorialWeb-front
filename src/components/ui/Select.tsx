@@ -63,7 +63,7 @@ export const Select: React.FC<SelectProps> = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface hover:border-outline hover:bg-surface-container/30 transition-all focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary',
+          'w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm rounded-xl border border-outline/70 bg-surface text-on-surface hover:border-outline hover:bg-surface-container/30 transition-colors focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary',
           isOpen && 'border-primary ring-1 ring-primary'
         )}
       >
