@@ -15,9 +15,4 @@ export const userApi = {
     });
   },
 
-  getUserProfile(accountId: number): Promise<UserProfile> {
-    return request<UserProfile>(`/api/users/${accountId}`, {
-      method: 'GET',
-    });
-  },
 };

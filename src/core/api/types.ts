@@ -48,6 +48,9 @@ export interface ArticleResponse {
   authorAccountId: number;
   authorId?: number; // Backend GetArticlesResponse uses authorId
   authorDisplayName?: string | null;
+  authorAvatarObjectKey?: string | null;
+  coverObjectKey?: string | null;
+  authorInfo?: Record<string, { displayName: string | null; avatarObjectKey: string | null } | null>;
   status?: ArticleStatus;
   createdAt?: string;
   publishedAt?: string | null;
@@ -89,6 +92,7 @@ export interface UserProfile {
   displayName: string | null;
   createdAt: string;
   profileDescription: string | null;
+  avatarObjectKey?: string | null;
 }
 
 export interface PatchProfileRequest {
@@ -99,6 +103,7 @@ export interface PatchProfileRequest {
 export interface PatchProfileResponse {
   displayName: string | null;
   profileDescription: string | null;
+  avatarObjectKey?: string | null;
 }
 
 export interface PageResponse<T> {
@@ -179,6 +184,7 @@ export interface AdminUserProfileResponse {
   displayName: string | null;
   createdAt: string;
   profileDescription: string | null;
+  avatarObjectKey?: string | null;
 }
 
 export interface PatchAdminUserRequest {

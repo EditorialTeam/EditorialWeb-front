@@ -1,3 +1,4 @@
+import { ArticleMedia } from '@/components/media/ArticleMedia';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -24,7 +25,7 @@ import {
 export const ArticleEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, canWrite, setDevRole, isMockMode } = useAuth();
+  const { user, canWrite } = useAuth();
   const [article, setArticle] = useState<ArticleResponse | null>(null);
 
   const isEditMode = Boolean(id);
@@ -74,7 +75,7 @@ export const ArticleEditorPage: React.FC = () => {
 
     loadArticle();
     return () => { cancelled = true; };
-  }, [articleId, isEditMode, isMockMode, user?.accountId]);
+  }, [articleId, isEditMode, user?.accountId]);
 
   const insertMarkdown = (prefix: string, suffix: string = '') => {
     const textarea = document.getElementById('article-content-textarea') as HTMLTextAreaElement;
@@ -129,7 +130,7 @@ export const ArticleEditorPage: React.FC = () => {
           title: trimmedTitle,
           content: trimmedContent,
         });
-        navigate(`/article/${created.id}`);
+        navigate(`/editor/${created.id}`, { replace: true });
       }
     } catch (err: any) {
       console.error('Failed to save article:', err);
@@ -151,7 +152,7 @@ export const ArticleEditorPage: React.FC = () => {
   // Guard for role permissions
   if (!canWrite) {
     return (
-      <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-2xl p-8 text-center space-y-4">
+      <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-xl p-8 text-center space-y-4">
         <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
           <ShieldAlert className="w-6 h-6" />
         </div>
@@ -161,13 +162,7 @@ export const ArticleEditorPage: React.FC = () => {
           Текущая роль вашего аккаунта: <strong>{user?.role || 'Гость'}</strong>.
         </p>
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          {isMockMode && <Button
-            size="sm"
-            onClick={() => setDevRole('AUTHOR')}
-            className="w-full sm:w-auto"
-          >
-            Переключить роль на AUTHOR
-          </Button>}
+
           <Link to="/" className="w-full sm:w-auto">
             <Button variant="outline" size="sm" className="w-full">
               Вернуться в каталог
@@ -189,7 +184,7 @@ export const ArticleEditorPage: React.FC = () => {
   }
 
   if (isEditMode && (!article || !articlePermissions(article, user).edit)) {
-    return <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-2xl p-8 text-center space-y-4">
+    return <div className="max-w-xl mx-auto my-12 bg-surface border border-outline-variant rounded-xl p-8 text-center space-y-4">
       <h2 className="text-xl font-bold text-on-surface">Редактирование недоступно</h2>
       <p className="text-sm text-secondary">{error || 'Ваши права или текущий статус статьи не позволяют изменить текст.'}</p>
       <Link to="/?view=my"><Button variant="outline" size="sm">Мои статьи</Button></Link>
@@ -219,9 +214,9 @@ export const ArticleEditorPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('write')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === 'write'
-                ? 'bg-surface text-on-surface shadow-sm'
+                ? 'bg-surface text-on-surface'
                 : 'text-secondary hover:text-on-surface'
             }`}
           >
@@ -231,9 +226,9 @@ export const ArticleEditorPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('preview')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeTab === 'preview'
-                ? 'bg-surface text-on-surface shadow-sm'
+                ? 'bg-surface text-on-surface'
                 : 'text-secondary hover:text-on-surface'
             }`}
           >
@@ -369,6 +364,10 @@ export const ArticleEditorPage: React.FC = () => {
           </div>
         )}
 
+        {article ? <ArticleMedia key={article.id} articleId={article.id} editable coverObjectKey={article.coverObjectKey}
+          onInsert={url => setContent(current => `${current}\n\n![Описание изображения](${url})\n`)}
+          onReplace={(previous, next) => setContent(current => next ? current.split(previous).join(next) : current.replace(/!\[[^\]]*\]\(([^)]+)\)/g, (match, url: string) => url === previous ? '' : match))} />
+          : <p className="text-sm text-secondary">Создайте черновик, чтобы загрузить обложку и изображения.</p>}
         {/* Bottom Actions */}
         <div className="flex items-center justify-between pt-4 border-t border-outline-variant">
           <Button
@@ -382,7 +381,7 @@ export const ArticleEditorPage: React.FC = () => {
 
           <Button type="submit" size="md" isLoading={isSaving} className="gap-2">
             <Save className="w-4 h-4" />
-            {isEditMode ? 'Сохранить изменения' : 'Опубликовать статью'}
+            {isEditMode ? 'Сохранить изменения' : 'Создать черновик'}
           </Button>
         </div>
       </form>

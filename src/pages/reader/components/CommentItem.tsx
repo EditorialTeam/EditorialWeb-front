@@ -1,317 +1,104 @@
-import React, { useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { CommentResponse } from '@/core/api/types';
 import { commentsApi } from '@/core/api/commentsApi';
 import { useAuth } from '@/core/auth/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import {
-  Reply,
-  Edit2,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
-  CornerDownRight,
-  User as UserIcon,
-  Check,
-  X,
-} from 'lucide-react';
+import { CommentComposer } from './CommentComposer';
+import { Reply, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
-interface CommentItemProps {
+interface Props {
   comment: CommentResponse;
   articleId: number;
   articleAuthorId: number;
   isPublished: boolean;
-  onReply: (parentId: number, authorName: string) => void;
   onRefresh: () => void;
-  isNested?: boolean;
+  depth?: number;
 }
 
-export const CommentItem: React.FC<CommentItemProps> = ({
-  comment,
-  articleId,
-  articleAuthorId,
-  isPublished,
-  onReply,
-  onRefresh,
-  isNested = false,
-}) => {
-  const { user, canWrite } = useAuth();
-
-  // Edit state
-  const [isEditing, setIsEditing] = useState(false);
+export function CommentItem({ comment, articleId, articleAuthorId, isPublished, onRefresh, depth = 0 }: Props) {
+  const { user, isAuthenticated } = useAuth();
+  const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
-
-  // Delete modal state
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Replies state
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
   const [replies, setReplies] = useState<CommentResponse[]>([]);
-  const [isRepliesLoaded, setIsRepliesLoaded] = useState(false);
-  const [areRepliesExpanded, setAreRepliesExpanded] = useState(false);
-  const [isLoadingReplies, setIsLoadingReplies] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+  const replyButton = useRef<HTMLButtonElement>(null);
+  const own = user?.accountId === comment.authorAccountId;
+  const name = comment.authorDisplayName || `Пользователь №${comment.authorAccountId}`;
+  const canDelete = user?.role === 'ADMIN' || (user?.role === 'AUTHOR' && user.accountId === articleAuthorId) || ((user?.role === 'USER' || user?.role === 'EDITOR') && own);
+  const canReply = isAuthenticated && isPublished && !comment.deleted;
 
-  const isAuthorOfComment = user?.accountId === comment.authorAccountId;
-  const isArticleOwner = user?.accountId === articleAuthorId;
-  const isAdmin = user?.role === 'ADMIN';
-  const isEditor = user?.role === 'EDITOR';
+  useEffect(() => { if (!editing) setEditContent(comment.content); }, [comment.content, editing]);
+  useEffect(() => {
+    if (!expanded) return;
+    let active = true;
+    setLoadingReplies(true); setReplyError(null);
+    commentsApi.getAllReplies(articleId, comment.id)
+      .then(items => { if (active) setReplies(items); })
+      .catch((err: Error) => { if (active) setReplyError(err.message); })
+      .finally(() => { if (active) setLoadingReplies(false); });
+    return () => { active = false; };
+  }, [articleId, comment, expanded, revision]);
 
-  // Backend rules for deletion:
-  // ADMIN: any comment
-  // AUTHOR: if owns article
-  // EDITOR: if author of comment
-  const canDelete =
-    isAdmin || (isArticleOwner && user?.role === 'AUTHOR') || (isEditor && isAuthorOfComment);
-
-  const canEdit = isAuthorOfComment && !comment.deleted;
-  const canReplyAction = canWrite && isPublished && !comment.deleted;
-
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editContent.trim()) return;
-    setIsSavingEdit(true);
-    setEditError(null);
-    try {
-      await commentsApi.edit(articleId, comment.id, { content: editContent.trim() });
-      setIsEditing(false);
-      onRefresh();
-    } catch (err: any) {
-      setEditError(err.message || 'Не удалось обновить комментарий');
-    } finally {
-      setIsSavingEdit(false);
-    }
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (saving || !editContent.trim()) return;
+    setSaving(true); setError(null);
+    try { await commentsApi.edit(articleId, comment.id, { content: editContent.trim() }); setEditing(false); onRefresh(); }
+    catch (err) { setError((err as Error).message); }
+    finally { setSaving(false); }
   };
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await commentsApi.delete(articleId, comment.id);
-      setIsDeleteOpen(false);
-      onRefresh();
-    } catch (err: any) {
-      alert(`Ошибка удаления: ${err.message || err}`);
-    } finally {
-      setIsDeleting(false);
-    }
+  const remove = async () => {
+    setDeleting(true); setError(null);
+    try { await commentsApi.delete(articleId, comment.id); setDeleteOpen(false); setReplyOpen(false); onRefresh(); }
+    catch (err) { setError((err as Error).message); setDeleteOpen(false); }
+    finally { setDeleting(false); }
   };
-
-  const handleToggleReplies = async () => {
-    if (!areRepliesExpanded && !isRepliesLoaded) {
-      setIsLoadingReplies(true);
-      try {
-        const res = await commentsApi.getReplies(articleId, comment.id);
-        const items = Array.isArray(res?.content)
-          ? res.content
-          : Array.isArray(res)
-          ? (res as unknown as CommentResponse[])
-          : [];
-        setReplies(items);
-        setIsRepliesLoaded(true);
-      } catch (err) {
-        console.error('Failed to load replies:', err);
-      } finally {
-        setIsLoadingReplies(false);
-      }
-    }
-    setAreRepliesExpanded(!areRepliesExpanded);
+  const closeReply = () => { setReplyOpen(false); replyButton.current?.focus({ preventScroll: true }); };
+  const reply = async (content: string) => {
+    if (!canReply) throw new Error('Ответить на этот комментарий сейчас нельзя.');
+    const created = await commentsApi.create(articleId, { content, parentId: comment.id });
+    setReplies(current => [created, ...current.filter(item => item.id !== created.id)]);
+    setExpanded(true);
+    setRevision(value => value + 1);
+    closeReply();
   };
-
-  const formatDate = (isoString?: string) => {
-    if (!isoString) return '';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return isoString;
-    }
-  };
+  const date = new Date(comment.createdAt);
+  const dateLabel = Number.isFinite(date.getTime()) ? date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
 
   return (
-    <div className={`group/comment relative ${isNested ? 'pt-3' : 'pt-4 pb-4 border-b border-outline-variant'}`}>
-      <div className="flex items-start gap-3">
-        {/* Avatar badge */}
-        <div className="w-8 h-8 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-xs font-bold text-primary shrink-0 select-none">
-          {comment.authorDisplayName ? (
-            comment.authorDisplayName.charAt(0).toUpperCase()
-          ) : (
-            <UserIcon className="w-4 h-4 text-secondary" />
-          )}
-        </div>
-
-        {/* Content body */}
-        <div className="flex-1 min-w-0 space-y-1.5">
-          {/* Header Strip */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-on-surface">
-                {comment.authorDisplayName || `Пользователь #${comment.authorAccountId}`}
-              </span>
-              {comment.authorAccountId === articleAuthorId && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
-                  Автор статьи
-                </span>
-              )}
-              <span className="text-secondary text-[11px]">•</span>
-              <span className="text-[11px] text-secondary">{formatDate(comment.createdAt)}</span>
-              {comment.updatedAt && !comment.deleted && (
-                <span className="text-[10px] text-secondary/70 italic">(изменено)</span>
-              )}
-            </div>
-
-            {/* Quick Actions */}
-            {!comment.deleted && (
-              <div className="flex items-center gap-1 opacity-80 group-hover/comment:opacity-100 transition-opacity">
-                {canReplyAction && !isNested && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onReply(
-                        comment.id,
-                        comment.authorDisplayName || `Пользователь #${comment.authorAccountId}`
-                      )
-                    }
-                    className="p-1 text-xs text-secondary hover:text-primary transition-colors flex items-center gap-1 rounded hover:bg-surface-container"
-                    title="Ответить на комментарий"
-                  >
-                    <Reply className="w-3.5 h-3.5" />
-                    <span className="text-[11px] hidden sm:inline">Ответить</span>
-                  </button>
-                )}
-
-                {canEdit && !isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="p-1 text-xs text-secondary hover:text-primary transition-colors rounded hover:bg-surface-container"
-                    title="Редактировать комментарий"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => setIsDeleteOpen(true)}
-                    className="p-1 text-xs text-secondary hover:text-error transition-colors rounded hover:bg-surface-container"
-                    title="Удалить комментарий"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Comment Text or Inline Edit */}
-          {isEditing ? (
-            <form onSubmit={handleSaveEdit} className="space-y-2 pt-1">
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                rows={2}
-                maxLength={5000}
-                required
-                className="w-full px-3 py-2 text-xs rounded-xl border border-outline bg-surface text-on-surface focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
-              />
-              {editError && <div className="text-[11px] text-error">{editError}</div>}
-              <div className="flex items-center gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditing(false)}
-                  disabled={isSavingEdit}
-                >
-                  <X className="w-3.5 h-3.5 mr-1" />
-                  Отмена
-                </Button>
-                <Button type="submit" size="sm" disabled={isSavingEdit}>
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  {isSavingEdit ? 'Сохранение...' : 'Сохранить'}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div
-              className={`text-xs leading-relaxed break-words ${
-                comment.deleted ? 'text-secondary/60 italic' : 'text-on-surface'
-              }`}
-            >
-              {comment.deleted ? 'Этот комментарий был удален :(' : comment.content}
-            </div>
-          )}
-
-          {/* Toggle Replies button (for root comments) */}
-          {!isNested && (
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={handleToggleReplies}
-                className="text-[11px] font-semibold text-secondary hover:text-primary transition-colors flex items-center gap-1"
-              >
-                <CornerDownRight className="w-3 h-3 text-secondary" />
-                {areRepliesExpanded ? (
-                  <>
-                    <span>Скрыть ответы</span>
-                    <ChevronUp className="w-3 h-3" />
-                  </>
-                ) : (
-                  <>
-                    <span>{replies.length > 0 ? `Ответы (${replies.length})` : 'Показать ответы'}</span>
-                    <ChevronDown className="w-3 h-3" />
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Nested Replies List */}
-          {areRepliesExpanded && !isNested && (
-            <div className="mt-3 pl-4 border-l-2 border-outline-variant space-y-3">
-              {isLoadingReplies ? (
-                <div className="text-[11px] text-secondary py-2">Загрузка ответов...</div>
-              ) : !Array.isArray(replies) || replies.length === 0 ? (
-                <div className="text-[11px] text-secondary py-2">Ответов пока нет.</div>
-              ) : (
-                replies.map((reply) => (
-                  <CommentItem
-                    key={reply.id}
-                    comment={reply}
-                    articleId={articleId}
-                    articleAuthorId={articleAuthorId}
-                    isPublished={isPublished}
-                    onReply={onReply}
-                    onRefresh={() => {
-                      onRefresh();
-                      handleToggleReplies();
-                    }}
-                    isNested
-                  />
-                ))
-              )}
-            </div>
-          )}
-        </div>
+    <article className={`comment-item ${depth === 0 ? 'comment-item--root' : ''}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary">
+        <span className="font-semibold text-on-surface">{name}</span>
+        {comment.authorAccountId === articleAuthorId && <span>Автор статьи</span>}
+        {dateLabel && <time dateTime={comment.createdAt}>{dateLabel}</time>}
+        {comment.updatedAt && !comment.deleted && <span>изменено</span>}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmDialog
-        isOpen={isDeleteOpen}
-        onClose={() => setIsDeleteOpen(false)}
-        onConfirm={handleDelete}
-        title="Удаление комментария"
-        description="Вы уверены, что хотите удалить этот комментарий? Текст будет заменен на системную отметку об удалении."
-        confirmLabel="Удалить"
-        isLoading={isDeleting}
-      />
-    </div>
+      {editing ? <form onSubmit={save} className="space-y-3 mt-3"><label className="sr-only" htmlFor={`edit-comment-${comment.id}`}>Изменить комментарий</label><textarea id={`edit-comment-${comment.id}`} value={editContent} disabled={saving} onChange={event => setEditContent(event.target.value)} required maxLength={5000} rows={3} className="comment-composer__input" /><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" disabled={saving} onClick={() => setEditing(false)}>Отмена</Button><Button type="submit" size="sm" isLoading={saving} disabled={!editContent.trim()}>Сохранить</Button></div></form>
+        : <p className={`mt-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${comment.deleted ? 'text-secondary italic' : 'text-on-surface'}`}>{comment.deleted ? 'Комментарий удалён' : comment.content}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-error">{error}</p>}
+      <div className="comment-actions">
+        {canReply && <button ref={replyButton} type="button" aria-expanded={replyOpen} aria-controls={`reply-to-${comment.id}`} onClick={() => { if (replyOpen) closeReply(); else setReplyOpen(true); }}><Reply className="w-3.5 h-3.5" />Ответить</button>}
+        {!comment.deleted && own && !editing && <button type="button" onClick={() => { setError(null); setEditing(true); }}><Edit2 className="w-3.5 h-3.5" />Изменить</button>}
+        {!comment.deleted && canDelete && <button type="button" disabled={deleting} onClick={() => setDeleteOpen(true)}><Trash2 className="w-3.5 h-3.5" />Удалить</button>}
+        <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}{expanded ? 'Скрыть ответы' : replies.length ? `Ответы (${replies.length})` : 'Ответы'}</button>
+      </div>
+      {replyOpen && canReply && <div id={`reply-to-${comment.id}`} className="mt-4"><CommentComposer label={`Ответ пользователю ${name}`} submitLabel="Ответить" onSubmit={reply} onCancel={closeReply} focusOnMount /></div>}
+      {expanded && <div className={`comment-thread ${depth < 3 ? 'comment-thread--indented' : ''}`} aria-busy={loadingReplies}>
+        {loadingReplies && !replies.length && <p className="text-sm text-secondary">Загрузка ответов…</p>}
+        {replyError && <div className="space-y-2"><p role="alert" className="text-sm text-error">{replyError}</p><Button variant="ghost" size="sm" onClick={() => setRevision(value => value + 1)}>Повторить</Button></div>}
+        {!loadingReplies && !replyError && !replies.length && <p className="text-sm text-secondary">Ответов пока нет.</p>}
+        {replies.map(item => <CommentItem key={item.id} comment={item} articleId={articleId} articleAuthorId={articleAuthorId} isPublished={isPublished} depth={depth + 1} onRefresh={() => { setRevision(value => value + 1); onRefresh(); }} />)}
+      </div>}
+      <ConfirmDialog isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={remove} isLoading={deleting} title="Удалить комментарий?" description="Текст будет заменён отметкой об удалении. Ответы сохранятся." confirmLabel="Удалить" />
+    </article>
   );
-};
+}

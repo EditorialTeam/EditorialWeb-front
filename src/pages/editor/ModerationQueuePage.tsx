@@ -15,7 +15,6 @@ import {
   Clock,
   User as UserIcon,
   RefreshCw,
-  Sparkles,
   ExternalLink,
 } from 'lucide-react';
 
@@ -64,7 +63,7 @@ export const ModerationQueuePage: React.FC = () => {
       if (previewArticle?.id === articleId) setPreviewArticle(null);
       await loadQueue();
     } catch (err: any) {
-      alert(`Ошибка одобрения: ${err.message || err}`);
+      setError(err.message || 'Не удалось одобрить статью');
     } finally {
       setIsSubmittingDecision(false);
     }
@@ -86,7 +85,7 @@ export const ModerationQueuePage: React.FC = () => {
       if (previewArticle?.id === rejectTarget.id) setPreviewArticle(null);
       await loadQueue();
     } catch (err: any) {
-      alert(`Ошибка отклонения статьи: ${err.message || err}`);
+      setError(err.message || 'Не удалось отклонить статью'); setRejectTarget(null);
     } finally {
       setIsSubmittingDecision(false);
     }
@@ -105,7 +104,7 @@ export const ModerationQueuePage: React.FC = () => {
               Очередь: {articles.length}
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-on-surface tracking-tight">
+          <h1 className="text-3xl font-bold text-on-surface tracking-tight">
             Редакторская панель
           </h1>
           <p className="text-sm text-secondary mt-1">
@@ -125,18 +124,18 @@ export const ModerationQueuePage: React.FC = () => {
           Загрузка очереди модерации...
         </div>
       ) : error ? (
-        <div className="p-6 rounded-2xl bg-error/10 border border-error/20 text-error text-center text-sm">
+        <div className="p-6 rounded-xl bg-error/10 border border-error/20 text-error text-center text-sm">
           {error}
         </div>
       ) : articles.length === 0 ? (
-        <div className="py-20 text-center rounded-2xl border border-dashed border-outline-variant bg-surface space-y-4">
+        <div className="py-20 text-center rounded-xl border border-dashed border-outline-variant bg-surface space-y-4">
           <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-            <Sparkles className="w-6 h-6" />
+            <CheckCircle2 className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-on-surface">Очередь модерации чиста</h3>
+            <h3 className="text-lg font-bold text-on-surface">Нет статей на проверке</h3>
             <p className="text-xs text-secondary max-w-sm mx-auto">
-              Все присланные материалы проверены. Новые статьи появятся здесь после отправки авторами на рецензию.
+              Статьи появятся здесь после отправки на проверку.
             </p>
           </div>
         </div>
@@ -148,7 +147,7 @@ export const ModerationQueuePage: React.FC = () => {
             return (
               <div
                 key={article.id}
-                className="bg-surface border border-outline-variant hover:border-outline rounded-2xl p-5 sm:p-6 transition-all shadow-sm space-y-4"
+                className="bg-surface border border-outline-variant hover:border-outline rounded-xl p-5 sm:p-6 transition-colors space-y-4"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-2 flex-1 min-w-0">
@@ -293,12 +292,12 @@ export const ModerationQueuePage: React.FC = () => {
         >
           <form onSubmit={handleRejectSubmit} className="space-y-4">
             <p className="text-xs text-secondary leading-relaxed">
-              Укажите причину или замечания для автора статьи «<strong>{rejectTarget.title}</strong>». Автор увидит ваш комментарий в авторской панели и сможет внести правки.
+              Укажите причину или замечания для автора статьи «<strong>{rejectTarget.title}</strong>».
             </p>
 
             <div className="space-y-1.5">
               <label htmlFor="rejection-reason" className="block text-xs font-semibold text-on-surface">
-                Замечания редактора (rejectionReason)
+                Замечания редактора
               </label>
               <textarea
                 id="rejection-reason"

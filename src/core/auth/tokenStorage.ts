@@ -3,7 +3,6 @@ import { AuthUser } from '../api/types';
 const ACCESS_TOKEN_KEY = 'editorial_access_token';
 const REFRESH_TOKEN_KEY = 'editorial_refresh_token';
 const USER_KEY = 'editorial_user';
-const MOCK_MODE_KEY = 'editorial_mock_mode';
 
 export const tokenStorage = {
   getAccessToken(): string | null {
@@ -42,13 +41,9 @@ export const tokenStorage = {
     localStorage.removeItem(USER_KEY);
   },
 
-  isMockMode(): boolean {
-    const item = localStorage.getItem(MOCK_MODE_KEY);
-    // If not set, default to false (connect to real backend if available)
-    return item === 'true';
-  },
-
-  setMockMode(enabled: boolean): void {
-    localStorage.setItem(MOCK_MODE_KEY, String(enabled));
+  clearLegacyDemoSession(): void {
+    // Discard tokens from the removed simulator; real sessions stay intact.
+    if (localStorage.getItem('editorial_mock_mode') === 'true') this.clear();
+    localStorage.removeItem('editorial_mock_mode');
   },
 };
