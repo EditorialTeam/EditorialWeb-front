@@ -4,3 +4,6 @@ services:
     container_name: editorial-frontend
     restart: unless-stopped
     network_mode: host
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
