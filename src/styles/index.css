@@ -269,3 +269,12 @@
 .comment-actions > button:disabled { opacity: 0.5; }
 .comment-thread { margin-top: 1rem; }
 .comment-thread--indented { padding-left: clamp(0.75rem, 2vw, 1.25rem); border-left: 1px solid #d1d5db; }
+
+/* Distinct surfaces for feed entries and lifecycle statuses. */
+.publication--lead, .publication--feed { background: #fff; border: 1px solid #d9dadb; border-radius: 1rem; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgb(25 28 29 / 5%); }
+.article-status--DRAFT { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.article-status--PENDING_REVIEW { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
+.article-status--PUBLISHED { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+.article-status--REJECTED { background: #fff1f2; color: #9f1239; border-color: #fda4af; }
+.article-status--ARCHIVED { background: #f5f3ff; color: #5b21b6; border-color: #c4b5fd; }
+@media (max-width: 479px) { .publication--lead, .publication--feed { padding: 1rem; } }

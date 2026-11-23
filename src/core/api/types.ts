@@ -4,6 +4,7 @@ export type ArticleStatus = 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED
 export type ArticleScope = 'published' | 'my' | 'review';
 
 export interface RegisterAccountRequest {
+  displayName?: string;
   username: string;
   email: string;
   password: string;
