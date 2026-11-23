@@ -3,7 +3,7 @@ import { ReactionType } from '@/core/api/types';
 import { reactionsApi } from '@/core/api/reactionsApi';
 import { useAuth } from '@/core/auth/AuthContext';
 import { reactionOptions } from '@/core/api/reactionOptions';
-import { X } from 'lucide-react';
+
 export function ArticleReactions({ articleId }: { articleId: number }) {
   const { user, isAuthenticated } = useAuth();
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -11,19 +11,23 @@ export function ArticleReactions({ articleId }: { articleId: number }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const storageKey = `editorial_reaction_${user?.accountId}_${articleId}`;
   useEffect(() => {
     let active = true;
-    setSelected(null); setCounts({}); setError(null); setLoading(true);
+    let saved: ReactionType | null = null;
+    try { const value = localStorage.getItem(storageKey); if (reactionOptions.some(item => item.type === value)) saved = value as ReactionType; } catch { /* Storage may be unavailable. */ }
+    setSelected(isAuthenticated ? saved : null); setCounts({}); setError(null); setLoading(true);
     if (isAuthenticated) reactionsApi.getReactions(articleId).then(data => { if (active) setCounts(data.reactions); }).catch((err: Error) => { if (active) setError(err.message); }).finally(() => { if (active) setLoading(false); });
     else setLoading(false);
     return () => { active = false; };
-  }, [articleId, user?.accountId, isAuthenticated]);
+  }, [articleId, user?.accountId, isAuthenticated, storageKey]);
   const change = async (type: ReactionType | null) => {
     if (!isAuthenticated || busy) return;
     setBusy(true); setError(null);
     try {
       if (type) { const result = await reactionsApi.putReaction(articleId, type); setSelected(result.reactionType); }
       else { try { await reactionsApi.deleteReaction(articleId); } catch (err) { if ((err as { status?: number }).status !== 404) throw err; } setSelected(null); }
+      try { if (type) localStorage.setItem(storageKey, type); else localStorage.removeItem(storageKey); } catch { /* Keep the successful server action usable without storage. */ }
       setCounts((await reactionsApi.getReactions(articleId)).reactions);
     } catch (err) { setError((err as Error).message); }
     finally { setBusy(false); }
@@ -48,7 +52,6 @@ export function ArticleReactions({ articleId }: { articleId: number }) {
               <span aria-hidden="true" className="text-xs tabular-nums">{counts[item.type] ?? 0}</span>
             </button>
           ))}
-          {isAuthenticated && <button type="button" className="reaction-button reaction-button--clear" disabled={busy} onClick={() => change(null)} aria-label="Убрать мою реакцию" title="Убрать мою реакцию"><X className="w-4 h-4" /></button>}
         </div>
       )}
       {error && <p role="alert" className="text-sm text-error">{error}</p>}

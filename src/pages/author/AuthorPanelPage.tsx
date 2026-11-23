@@ -218,7 +218,7 @@ export const AuthorPanelPage: React.FC = () => {
                   <div className="space-y-2 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-mono text-secondary">#{article.id}</span>
-                      <Badge variant="outline">{articleStatusLabels[status] || status}</Badge>
+                      <Badge variant="outline" className={`article-status article-status--${status}`}>{articleStatusLabels[status] || status}</Badge>
                       <span className="text-secondary text-xs">•</span>
                       <span className="text-xs text-secondary flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />

@@ -15,6 +15,7 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({
         username: data.username.trim(),
+        displayName: data.displayName?.trim(),
         email: data.email.toLowerCase().trim(),
         password: data.password,
       }),
